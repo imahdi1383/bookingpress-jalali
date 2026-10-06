@@ -1,0 +1,555 @@
+<?php
+
+if( current_user_can('administrator') ){
+	return;
+}
+
+global $bookingpress_slugs,$BookingPressPro, $bookingpress_pro_staff_members,$BookingPress, $bookingpress_roles, $tbl_bookingpress_roles, $wpdb;
+$request_module = ( ! empty( $_REQUEST['page'] ) && ( $_REQUEST['page'] != 'bookingpress' ) ) ? str_replace( 'bookingpress_', '', sanitize_text_field( $_REQUEST['page'] ) ) : 'dashboard';
+$request_module = ( ! empty( $_REQUEST['page'] ) && ( $_REQUEST['page'] != 'bookingpress' ) ) ? str_replace( 'bookingpress-', '', sanitize_text_field( $_REQUEST['page'] ) ) : 'dashboard';
+$bookingpress_user_id        = get_current_user_id();
+$bookingpress_staffmember_id = $bookingpress_pro_staff_members->bookingpress_get_staffmember_id_using_wp_user_id( $bookingpress_user_id );
+
+$bookingpress_staffmember_avatar_url = BOOKINGPRESS_IMAGES_URL . '/default-avatar.jpg';
+
+if(!empty($bookingpress_staffmember_id)) {
+	$bookingpress_get_existing_avatar_details  = $bookingpress_pro_staff_members->get_bookingpress_staffmembersmeta( $bookingpress_staffmember_id, 'staffmember_avatar_details' );
+	$bookingpress_get_existing_avatar_details  = ! empty( $bookingpress_get_existing_avatar_details ) ? maybe_unserialize( $bookingpress_get_existing_avatar_details ) : array(); 	
+	if (! empty($bookingpress_get_existing_avatar_details[0]['url']) ) {
+		$bookingpress_staffmember_avatar_url = esc_html($bookingpress_get_existing_avatar_details[0]['url']);
+	} 
+}
+
+$bookingpress_upcomming_appointment = array( 'appointment_date' => '', 'booking_id' => '', 'customer_email' => '', 'customer_name' => '', 'service_name' => '',	'appointment_duration' => '',
+);
+$bookingpress_staffmember_name = "";
+if(!empty($bookingpress_staffmember_id)) {
+	$bookingpress_staffmember_name = $bookingpress_pro_staff_members->bookingpress_get_staffmembername_using_id($bookingpress_staffmember_id);
+	$bookingpress_upcomming_appointment = $bookingpress_pro_staff_members->bookingpress_get_staffmember_upcomming_appointment_data($bookingpress_staffmember_id);
+}
+$bookingpress_staffmember_name = apply_filters( 'bookingpress_staffmember_name', $bookingpress_staffmember_name );
+
+$current_user = wp_get_current_user();
+$bookingpress_custom_roles = "";
+if(!empty($bookingpress_roles) && !empty($current_user->roles)){
+	foreach($current_user->roles as $r){
+		$custom_role_query_result = $wpdb->get_row($wpdb->prepare("select bookingpress_role_slug from {$tbl_bookingpress_roles} where bookingpress_role_slug = %s ", $r), ARRAY_A);
+		
+		if(!empty($custom_role_query_result) && isset($custom_role_query_result["bookingpress_role_slug"])){
+			if($custom_role_query_result["bookingpress_role_slug"] == $r){
+				$bookingpress_custom_roles = $custom_role_query_result["bookingpress_role_slug"];
+				break;
+			}
+		}
+	}
+}
+
+$bookingpress_staffmember_access_admin = $BookingPress->bookingpress_get_settings( 'bookingpress_staffmember_access_admin', 'staffmember_setting' );
+
+if ( $BookingPressPro->bookingpress_check_user_role( 'bookingpress-staffmember' ) && ( ! $bookingpress_pro_staff_members->bookingpress_check_staffmember_module_activation() || $bookingpress_pro_staff_members->bookingpress_current_login_staffmember_status() != 1 ) ) {
+    
+} else {
+    $bookingpress_staff_panel_sidebar_classes = apply_filters('bookingpress_staff_panel_sidebar_classes', '');
+    $sidebar_navigation_class = ( !empty($_REQUEST['page'] ) && 'bookingpress-calendar' == $_REQUEST['page'] ) ? 'bpa-staff-sidebar-navigation-folded' : '';
+
+    if( !empty( $_REQUEST['page'] ) && in_array( $_REQUEST['page'], ['bookingpress', 'bookingpress_customers'] ) ){
+    ?>
+    
+    <nav class="bpa-header-navbar bpa-header-navbar__staff-admin-mode bpa-header-navbar--v2 bpa-header-navbar__staff" id="bpa-staff-panel-header">
+        <div class="bpa-header-navbar__staff-compact_view">
+            <div class="bpa-hns__wrap">
+                <div class="bpa-hns-wrap__left">
+                    <h2><?php esc_html_e('Welcome,','bookingpress-appointment-booking'); ?> <strong><?php echo esc_html(stripslashes_deep($bookingpress_staffmember_name));?></strong></h2>
+                </div>
+                <div class="bpa-hns-wrap__right">
+                    <?php 			
+                    do_action('bookingpress_staffpanel_top_bar_v3',$bookingpress_staffmember_id,'desktop');			
+                    if(!empty($bookingpress_upcomming_appointment)) { ?>
+                        <bp-ui-button class="bpa-btn bpa-btn__medium bpa-btn--icon-without-box bpa-hns-wrap-right__item bpa-hns__notification-item" @click="bookingpress_open_upcomming_appointment_model">
+                            <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M14.9102 8.82422C14.9102 5.01172 12.8594 3.71484 10.9414 3.42578C10.9414 3.40625 10.9453 3.38672 10.9453 3.36328C10.9453 2.88281 10.5195 2.5 10 2.5C9.48047 2.5 9.07031 2.88281 9.07031 3.36328C9.07031 3.38672 9.07031 3.40625 9.07422 3.42578C7.15234 3.71875 5.08984 5.01953 5.08984 8.83203C5.08984 13.2773 3.98438 13.7539 2.5 15.0039H17.5C16.0234 13.75 14.9102 13.2695 14.9102 8.82422Z" fill="#727E95"/>
+                                <path d="M10.0078 17.5C11.0547 17.5 11.9141 16.7227 12.0273 15.8203H7.98828C8.09766 16.7227 8.96094 17.5 10.0078 17.5Z" fill="#727E95"/>
+                            </svg>
+                        </bp-ui-button>
+                    <?php }else { ?>
+                        <bp-ui-button class="bpa-btn bpa-btn__medium bpa-btn--icon-without-box bpa-hns-wrap-right__item bpa-hns__notification-item __bpa-is-disabled" @click="bookingpress_open_upcomming_appointment_model"> 
+                            <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M14.9102 8.82422C14.9102 5.01172 12.8594 3.71484 10.9414 3.42578C10.9414 3.40625 10.9453 3.38672 10.9453 3.36328C10.9453 2.88281 10.5195 2.5 10 2.5C9.48047 2.5 9.07031 2.88281 9.07031 3.36328C9.07031 3.38672 9.07031 3.40625 9.07422 3.42578C7.15234 3.71875 5.08984 5.01953 5.08984 8.83203C5.08984 13.2773 3.98438 13.7539 2.5 15.0039H17.5C16.0234 13.75 14.9102 13.2695 14.9102 8.82422Z" fill="#727E95"/>
+                                <path d="M10.0078 17.5C11.0547 17.5 11.9141 16.7227 12.0273 15.8203H7.98828C8.09766 16.7227 8.96094 17.5 10.0078 17.5Z" fill="#727E95"/>
+                            </svg>
+                        </bp-ui-button> <?php
+                    }			
+                    if($BookingPressPro->bookingpress_check_user_role( 'bookingpress-staffmember' ) && !empty($bookingpress_staffmember_access_admin) && $bookingpress_staffmember_access_admin == 'true') { ?>
+                    <div class="bpa-hns-wrap-right__item" @click="bpa_staffmember_open_admin_view">
+                        <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M2.59288 9.9999C2.59239 12.8384 4.21392 15.4275 6.7678 16.6663L3.23415 6.98541C2.81055 7.93387 2.59207 8.96111 2.59288 9.9999ZM10.1304 10.6478L7.90755 17.1058C9.3999 17.5452 10.9927 17.5039 12.4602 16.9876C12.4396 16.9552 12.4218 16.9211 12.4071 16.8855L10.1304 10.6478ZM15.0009 9.62636C14.9909 8.90192 14.7795 8.19456 14.3902 7.58355C13.9921 7.08263 13.7402 6.48134 13.6625 5.84619C13.6446 5.1403 14.2006 4.55263 14.9065 4.53158C14.9393 4.53158 14.9705 4.53554 15.0024 4.53754C11.9864 1.77485 7.30187 1.98025 4.53922 4.99621C4.27191 5.28798 4.02848 5.6007 3.8112 5.93137C3.98503 5.9369 4.14887 5.94038 4.28787 5.94038C5.0625 5.94038 6.26216 5.84614 6.26216 5.84614C6.43099 5.83638 6.57579 5.96534 6.58556 6.13417C6.59505 6.29834 6.47314 6.44071 6.30946 6.4566C6.30946 6.4566 5.90799 6.50359 5.46181 6.52696L8.15907 14.5505L9.78038 9.68891L8.6263 6.52702C8.22721 6.50363 7.84939 6.45665 7.84939 6.45665C7.6811 6.44038 7.55784 6.29074 7.57406 6.12245C7.5899 5.95865 7.73232 5.8367 7.89654 5.84619C7.89654 5.84619 9.11952 5.94043 9.84728 5.94043C10.6219 5.94043 11.8218 5.84619 11.8218 5.84619C11.9906 5.83632 12.1355 5.96517 12.1453 6.13395C12.1549 6.29834 12.0329 6.44092 11.869 6.45665C11.869 6.45665 11.4672 6.50364 11.0213 6.52702L13.6982 14.4895L14.4623 12.0681C14.7607 11.2851 14.9422 10.4623 15.0009 9.62636ZM16.5502 7.20801C16.5374 8.12066 16.346 9.02203 15.9868 9.86112L13.7244 16.4024C17.1943 14.3839 18.4252 9.96908 16.5004 6.4464C16.5341 6.69884 16.5507 6.95329 16.5502 7.20801ZM10.0002 1.11133C5.09104 1.11133 1.11133 5.09104 1.11133 10.0002C1.11133 14.9094 5.09104 18.8891 10.0002 18.8891C14.9094 18.8891 18.8891 14.9094 18.8891 10.0002C18.8891 5.09104 14.9094 1.11133 10.0002 1.11133ZM13.2524 17.6993C10.6511 18.8002 7.66944 18.5104 5.32888 16.9291C3.98536 16.022 2.93365 14.7449 2.301 13.2524C1.19987 10.6511 1.4898 7.66933 3.0714 5.32888C3.9783 3.98524 5.25543 2.93343 6.74805 2.30105C9.34934 1.2002 12.331 1.49002 14.6716 3.07129C16.0151 3.97836 17.0668 5.25548 17.6994 6.74799C18.8006 9.34928 18.5106 12.3311 16.929 14.6715C16.0221 16.0151 14.745 17.067 13.2524 17.6993Z" />
+                        </svg>
+                    </div>
+                    <?php } ?>	
+                    <div class="bpa-hns-wrap-right__item" @click="bpa_staffmember_view_site('<?php echo home_url(); ?>')">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#1f1f1f"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z"/></svg>
+                    </div>
+                    <div class="bpa-hns-wrap-right__item bpa-staff-panel-log-btn">
+                        <bp-ui-button class="bpa-btn bpa-btn__medium" @click="bookingpress_staffmember_logout('<?php echo add_query_arg( 'bookingpress_action', 'bookingpress_logout', esc_url( admin_url() . 'admin.php?page=bookingpress' ) ); // phpcs:ignore ?>')">
+                            <span>
+                                <svg viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M3 9C3 9.19891 3.07902 9.38968 3.21967 9.53033C3.36032 9.67098 3.55109 9.75 3.75 9.75H9.4425L7.7175 11.4675C7.6472 11.5372 7.59141 11.6202 7.55333 11.7116C7.51525 11.803 7.49565 11.901 7.49565 12C7.49565 12.099 7.51525 12.197 7.55333 12.2884C7.59141 12.3798 7.6472 12.4628 7.7175 12.5325C7.78722 12.6028 7.87017 12.6586 7.96157 12.6967C8.05296 12.7347 8.15099 12.7543 8.25 12.7543C8.34901 12.7543 8.44704 12.7347 8.53843 12.6967C8.62983 12.6586 8.71278 12.6028 8.7825 12.5325L11.7825 9.5325C11.8508 9.46117 11.9043 9.37706 11.94 9.285C12.015 9.1024 12.015 8.8976 11.94 8.715C11.9043 8.62294 11.8508 8.53883 11.7825 8.4675L8.7825 5.4675C8.71257 5.39757 8.62955 5.3421 8.53819 5.30426C8.44682 5.26641 8.34889 5.24693 8.25 5.24693C8.15111 5.24693 8.05318 5.26641 7.96181 5.30426C7.87045 5.3421 7.78743 5.39757 7.7175 5.4675C7.64757 5.53743 7.5921 5.62045 7.55426 5.71181C7.51641 5.80318 7.49693 5.90111 7.49693 6C7.49693 6.09889 7.51641 6.19682 7.55426 6.28819C7.5921 6.37955 7.64757 6.46257 7.7175 6.5325L9.4425 8.25H3.75C3.55109 8.25 3.36032 8.32902 3.21967 8.46967C3.07902 8.61032 3 8.80109 3 9ZM12.75 1.5H5.25C4.65326 1.5 4.08097 1.73705 3.65901 2.15901C3.23705 2.58097 3 3.15326 3 3.75V6C3 6.19891 3.07902 6.38968 3.21967 6.53033C3.36032 6.67098 3.55109 6.75 3.75 6.75C3.94891 6.75 4.13968 6.67098 4.28033 6.53033C4.42098 6.38968 4.5 6.19891 4.5 6V3.75C4.5 3.55109 4.57902 3.36032 4.71967 3.21967C4.86032 3.07902 5.05109 3 5.25 3H12.75C12.9489 3 13.1397 3.07902 13.2803 3.21967C13.421 3.36032 13.5 3.55109 13.5 3.75V14.25C13.5 14.4489 13.421 14.6397 13.2803 14.7803C13.1397 14.921 12.9489 15 12.75 15H5.25C5.05109 15 4.86032 14.921 4.71967 14.7803C4.57902 14.6397 4.5 14.4489 4.5 14.25V12C4.5 11.8011 4.42098 11.6103 4.28033 11.4697C4.13968 11.329 3.94891 11.25 3.75 11.25C3.55109 11.25 3.36032 11.329 3.21967 11.4697C3.07902 11.6103 3 11.8011 3 12V14.25C3 14.8467 3.23705 15.419 3.65901 15.841C4.08097 16.2629 4.65326 16.5 5.25 16.5H12.75C13.3467 16.5 13.919 16.2629 14.341 15.841C14.7629 15.419 15 14.8467 15 14.25V3.75C15 3.15326 14.7629 2.58097 14.341 2.15901C13.919 1.73705 13.3467 1.5 12.75 1.5Z" />
+                                </svg>
+                            </span>
+                            <?php esc_html_e( 'Logout', 'bookingpress-appointment-booking' ); ?>
+                        </bp-ui-button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="bpa-header-navbar__staff-default_view">
+            <div class="bpa-header-navbar-wrap">
+                <?php
+                if ( $BookingPressPro->bookingpress_check_capability( 'bookingpress' ) ) {
+                    ?>
+                        <div class="bpa-navbar-brand">
+                            <a href="<?php echo esc_url( admin_url() . 'admin.php?page=bookingpress' ); ?>" class="navbar-logo">
+                                <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <rect width="64" height="64" rx="12"/>
+                                    <path d="M50 18.9608V47.2745C50 49.3359 48.325 51 46.25 51H17.75C15.675 51 14 49.3359 14 47.2745V18.9608C14 16.8993 15.675 15.2353 17.75 15.2353H23V14.1176C23 13.7451 23.375 13 24.125 13C24.875 13 25.25 13.7451 25.25 14.1176V18.5882C25.25 18.9608 24.875 19.7059 24.125 19.7059C23.375 19.7059 23 18.9608 23 18.5882V17.4706H18.5C17.25 17.4706 16.25 18.4641 16.25 19.7059V46.5294C16.25 47.7712 17.25 48.7647 18.5 48.7647H45.5C46.75 48.7647 47.75 47.7712 47.75 46.5294V19.7059C47.75 18.4641 46.75 17.4706 45.5 17.4706H41C41 17.4706 41 18.0418 41 18.5882C41 18.9608 40.625 19.7059 39.875 19.7059C39.125 19.7059 38.75 18.9608 38.75 18.5882V17.4706H33.125C32.5 17.4706 32 16.9739 32 16.3529C32 15.732 32.5 15.2353 33.125 15.2353H38.75V14.1176C38.75 13.7451 39.125 13 39.875 13C40.625 13 41 13.7451 41 14.1176V15.2353H46.25C48.325 15.2353 50 16.8993 50 18.9608Z" fill="white"/>
+                                    <path d="M37.2501 30.8823C37.2501 30.8823 38.0001 30.1372 38.0001 27.9019C38.0001 24.1765 35.7501 23.4314 32.7501 23.4314H26.0001V39.0784H30.5001V43.549H32.7501V39.0784C35.3501 39.0784 37.1751 39.0784 38.5251 37.4144C39.1751 36.6196 39.5001 35.6013 39.5001 34.5582C39.5001 34.0118 39.4251 33.4654 39.3001 33.1176C38.9751 32.2732 38.7501 31.6274 37.2501 30.8823ZM35.0001 36.8431C34.2501 36.8431 32.7501 36.8431 32.7501 36.8431C32.7501 36.8431 32.7501 36.098 32.7501 34.6078C32.7501 33.366 33.7501 32.3725 35.0001 32.3725C36.2001 32.3725 37.2501 33.3412 37.2501 34.6078C37.2501 35.9242 36.1501 36.8431 35.0001 36.8431ZM33.1751 30.6836C32.8001 30.8575 32.4251 31.081 32.0751 31.3294C31.2501 31.9503 30.5001 32.8444 30.5001 34.6078V36.8431H28.2501V25.6667H32.7501C34.5501 25.6667 35.7501 26.4118 35.7501 27.9019C35.7501 29.268 34.7251 29.9137 33.1751 30.6836Z" fill="white"/>
+                                </svg>
+                            </a>
+                        </div>
+                <?php } ?>
+                <div class="bpa-navbar-nav" id="bpa-navbar-nav"  @click="bpa_staffmemeber_toogle_menu" :class="(bpa_toggle_active == 1) ? 'bpa-mobile-nav' : ''">
+                    <div class="bpa-menu-toggle" id="bpa-mobile-menu" :class="{'is-active': bpa_toggle_active}">
+                        <span class="bpa-mm-bar"></span>
+                        <span class="bpa-mm-bar"></span>
+                        <span class="bpa-mm-bar"></span>
+                    </div>
+                    <ul> 
+                            <?php
+                            if ( $BookingPressPro->bookingpress_check_capability( 'bookingpress_calendar' ) ) {
+                                ?>
+                                
+                                <li class="bpa-nav-item <?php echo ( 'calendar' == $request_module ) ? '__active' : ''; ?>">
+                                    <?php //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped --Reason - URL is escaped properly ?>	
+                                        <a href="<?php echo add_query_arg( 'page', esc_html($bookingpress_slugs->bookingpress_calendar), esc_url( admin_url() . 'admin.php?page=bookingpress' ) ); // phpcs:ignore ?>" class="bpa-nav-link">
+                                            <div class="bpa-nav-link--icon">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M20 3h-1V2c0-.55-.45-1-1-1s-1 .45-1 1v1H7V2c0-.55-.45-1-1-1s-1 .45-1 1v1H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 18H5c-.55 0-1-.45-1-1V8h16v12c0 .55-.45 1-1 1z"/></svg>
+                                            </div>
+                                            <?php esc_html_e( 'Calendar', 'bookingpress-appointment-booking' ); ?>
+                                        </a>
+                                    </li>
+                                <?php
+                            }
+                            if ( $BookingPressPro->bookingpress_check_capability( 'bookingpress_appointments' ) ) {
+                                ?>
+                                    <li class="bpa-nav-item <?php echo ( 'appointments' == $request_module ) ? '__active' : ''; ?>">
+                                        <?php //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped --Reason - URL is escaped properly ?>
+                                            <a href="<?php echo add_query_arg( 'page', esc_html($bookingpress_slugs->bookingpress_appointments), esc_url( admin_url() . 'admin.php?page=bookingpress' ) ); // phpcs:ignore ?>" class="bpa-nav-link">
+                                                <div class="bpa-nav-link--icon">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M16 12h-3c-.55 0-1 .45-1 1v3c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-3c0-.55-.45-1-1-1zm0-10v1H8V2c0-.55-.45-1-1-1s-1 .45-1 1v1H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm2 17H6c-.55 0-1-.45-1-1V8h14v10c0 .55-.45 1-1 1z"/></svg>
+                                                </div>
+                                                <?php esc_html_e( 'Appointments', 'bookingpress-appointment-booking' ); ?>
+                                            </a>
+                                        </li>
+                                <?php
+                            }
+                            if ( $BookingPressPro->bookingpress_check_capability( 'bookingpress_customers' ) ) {
+                                ?>
+                                
+                                    <li class="bpa-nav-item <?php echo ( 'customers' == $request_module ) ? '__active' : ''; ?>">
+                                        <?php //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped --Reason - URL is escaped properly ?>	
+                                        <a href="<?php echo add_query_arg( 'page', esc_html($bookingpress_slugs->bookingpress_customers), esc_url( admin_url() . 'admin.php?page=bookingpress' ) ); // phpcs:ignore ?>" class="bpa-nav-link">
+                                            <div class="bpa-nav-link--icon">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M16.5 12c1.38 0 2.49-1.12 2.49-2.5S17.88 7 16.5 7 14 8.12 14 9.5s1.12 2.5 2.5 2.5zM9 11c1.66 0 2.99-1.34 2.99-3S10.66 5 9 5 6 6.34 6 8s1.34 3 3 3zm7.5 3c-1.83 0-5.5.92-5.5 2.75V18c0 .55.45 1 1 1h9c.55 0 1-.45 1-1v-1.25c0-1.83-3.67-2.75-5.5-2.75zM9 13c-2.33 0-7 1.17-7 3.5V18c0 .55.45 1 1 1h6v-2.25c0-.85.33-2.34 2.37-3.47C10.5 13.1 9.66 13 9 13z"/></svg>
+                                            </div>
+                                            <?php esc_html_e( 'Customers', 'bookingpress-appointment-booking' ); ?>
+                                        </a>
+                                    </li>
+                                <?php
+                            }
+                            if ( $BookingPressPro->bookingpress_check_capability( 'bookingpress_payments' ) ) {
+                                ?>							
+                                    <li class="bpa-nav-item <?php echo ( 'payments' == $request_module ) ? '__active' : ''; ?>">
+                                        <?php //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped --Reason - URL is escaped properly ?>
+                                        <a href="<?php echo add_query_arg( 'page', esc_html($bookingpress_slugs->bookingpress_payments), esc_url( admin_url() . 'admin.php?page=bookingpress' ) ); // phpcs:ignore ?>" class="bpa-nav-link">
+                                            <div class="bpa-nav-link--icon">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09v.58c0 .73-.6 1.33-1.33 1.33h-.01c-.73 0-1.33-.6-1.33-1.33v-.6c-1.33-.28-2.51-1.01-3.01-2.24-.23-.55.2-1.16.8-1.16h.24c.37 0 .67.25.81.6.29.75 1.05 1.27 2.51 1.27 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21v-.6c0-.73.6-1.33 1.33-1.33h.01c.73 0 1.33.6 1.33 1.33v.62c1.38.34 2.25 1.2 2.63 2.26.2.55-.22 1.13-.81 1.13h-.26c-.37 0-.67-.26-.77-.62-.23-.76-.86-1.25-2.12-1.25-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.02 1.83-1.39 2.83-3.13 3.16z"/></svg>
+                                            </div>
+                                            <?php esc_html_e( 'Payments', 'bookingpress-appointment-booking' ); ?>
+                                        </a>
+                                    </li>
+                                <?php
+                            }
+                            if ( $BookingPressPro->bookingpress_check_capability( 'bookingpress_timesheet' ) ) {
+                                ?>
+                                    <li class="bpa-nav-item <?php echo ( 'timesheet' == $request_module ) ? '__active' : ''; ?>">
+                                    <?php //phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped --Reason - URL is escaped properly ?>
+                                        <a href="<?php echo add_query_arg( 'page', esc_html($bookingpress_slugs->bookingpress_timesheet), esc_url( admin_url() . 'admin.php?page=bookingpress' ) ); // phpcs:ignore ?>" class="bpa-nav-link">
+                                            <div class="bpa-nav-link--icon">
+                                                <svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" viewBox="0 0 24 24"><g><rect fill="none" height="24" width="24"/><path d="M18,3h-3.18C14.4,1.84,13.3,1,12,1S9.6,1.84,9.18,3H6C4.9,3,4,3.9,4,5v15c0,1.1,0.9,2,2,2h6.11 c-0.59-0.57-1.07-1.25-1.42-2H6V5h2v1c0,1.1,0.9,2,2,2h4c1.1,0,2-0.9,2-2V5h2v5.08c0.71,0.1,1.38,0.31,2,0.6V5C20,3.9,19.1,3,18,3z M12,5c-0.55,0-1-0.45-1-1c0-0.55,0.45-1,1-1c0.55,0,1,0.45,1,1C13,4.55,12.55,5,12,5z M17,12c-2.76,0-5,2.24-5,5s2.24,5,5,5 c2.76,0,5-2.24,5-5S19.76,12,17,12z M18.29,19l-1.65-1.65c-0.09-0.09-0.15-0.22-0.15-0.35l0-2.49c0-0.28,0.22-0.5,0.5-0.5h0 c0.28,0,0.5,0.22,0.5,0.5l0,2.29l1.5,1.5c0.2,0.2,0.2,0.51,0,0.71v0C18.8,19.2,18.49,19.2,18.29,19z"/></g></svg>
+                                            </div>
+                                            <?php esc_html_e( 'TimeSheet', 'bookingpress-appointment-booking' ); ?>
+                                        </a>
+                                    </li>	
+                                <?php
+                            }
+                            ?>
+                        </ul>
+                    </div>
+                    <div class="bpa-profile-dropdown">
+                        <bp-ui-dropdown class="bpa-nav-item-dropdown" trigger="click">
+                            <span class="el-dropdown-link bpa-nav-item-dropdown__link">
+                                <div class="bpa-pd__avatar">						
+                                    <img src=<?php echo esc_url_raw( $bookingpress_staffmember_avatar_url ); ?>>
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M8.12 9.29L12 13.17l3.88-3.88c.39-.39 1.02-.39 1.41 0 .39.39.39 1.02 0 1.41l-4.59 4.59c-.39.39-1.02.39-1.41 0L6.7 10.7c-.39-.39-.39-1.02 0-1.41.39-.38 1.03-.39 1.42 0z"/></svg>
+                                </div>
+                            </span>
+                            <template #dropdown>
+                                <bp-ui-dropdown-menu slot="dropdown" class="bpa-ni-dropdown-menu" v-cloak>
+                                    <?php
+                                    if ( $BookingPressPro->bookingpress_check_capability( 'bookingpress_myprofile' ) ) {
+                                        ?>
+                                            <bp-ui-dropdown-item class="bpa-ni-dropdown-menu--item <?php echo ( 'myprofile' == $request_module ) ? '__active' : ''; ?>">
+                                                <a href="<?php echo add_query_arg( 'page', $bookingpress_slugs->bookingpress_myprofile, esc_url( admin_url() . 'admin.php?page=bookingpress' ) ); // phpcs:ignore ?>" class="bpa-dm--item-link">
+                                                    <span>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" height="18px" viewBox="0 0 24 24" width="18px" fill="none"><g><rect fill="none" height="24" width="24"/><rect fill="none" height="24" width="24"/></g><g><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-4.43-.82-6.14-2.88C7.55 15.8 9.68 15 12 15s4.45.8 6.14 2.12C16.43 19.18 14.03 20 12 20z"/></g></svg>
+                                                    </span>
+                                                    <?php esc_html_e( 'My Profile', 'bookingpress-appointment-booking' ); ?>
+                                                </a>
+                                            </bp-ui-dropdown-item>
+                                                <?php
+                                    }
+                                    if ( $BookingPressPro->bookingpress_check_capability( 'bookingpress_myservices' ) ) {
+                                        ?>
+                                        <bp-ui-dropdown-item class="bpa-ni-dropdown-menu--item bpa-dm__addon-item <?php echo ( 'myservices' == $request_module ) ? '__active' : ''; ?>">
+                                            <a href="<?php echo add_query_arg( 'page', $bookingpress_slugs->bookingpress_myservices, esc_url( admin_url() . 'admin.php?page=bookingpress' ) ); // phpcs:ignore ?>" class="bpa-dm--item-link">
+                                                <span>
+                                                    <svg width="18px" height="18px" fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M14 9.5h3c.55 0 1-.45 1-1s-.45-1-1-1h-3c-.55 0-1 .45-1 1s.45 1 1 1zm0 7h3c.55 0 1-.45 1-1s-.45-1-1-1h-3c-.55 0-1 .45-1 1s.45 1 1 1zm5 4.5H5c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h14c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2zM7 11h3c.55 0 1-.45 1-1V7c0-.55-.45-1-1-1H7c-.55 0-1 .45-1 1v3c0 .55.45 1 1 1zm0-4h3v3H7V7zm0 11h3c.55 0 1-.45 1-1v-3c0-.55-.45-1-1-1H7c-.55 0-1 .45-1 1v3c0 .55.45 1 1 1zm0-4h3v3H7v-3z"/></svg>
+                                                </span>
+                                                <?php esc_html_e( 'My Services', 'bookingpress-appointment-booking' ); ?>
+                                            </a>
+                                        </bp-ui-dropdown-item>
+                                    <?php } ?>
+                                    <bp-ui-dropdown-item class="bpa-ni-dropdown-menu--item bpa-dm__addon-item">
+                                        <a href="<?php echo add_query_arg('staffmember_view','customize_view',get_permalink()); //phpcs:ignore ?>" class="bpa-dm--item-link">
+                                            <span>
+                                                <svg width="18px" height="18px" fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+                                            </span>
+                                            <?php esc_html_e( 'Compact Mode', 'bookingpress-appointment-booking' ); ?>
+                                        </a>
+                                    </bp-ui-dropdown-item>
+                                    <bp-ui-dropdown-item class="bpa-ni-dropdown-menu--item bpa-dm__addon-item">
+                                        <a href="<?php echo home_url(); //phpcs:ignore ?>" class="bpa-dm--item-link">
+                                            <span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#1f1f1f"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z"/></svg>
+                                            </span>
+                                            <?php esc_html_e( 'Visit Site', 'bookingpress-appointment-booking' ); ?>
+                                        </a>
+                                    </bp-ui-dropdown-item>
+                                    <bp-ui-dropdown-item class="bpa-ni-dropdown-menu--item bpa-dm__addon-item __bpa-is-logout">
+                                        <a href="<?php echo add_query_arg( 'bookingpress_action', 'bookingpress_logout', esc_url( admin_url() . 'admin.php?page=bookingpress' ) ); // phpcs:ignore ?>" class="bpa-dm--item-link">
+                                            <span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" height="18px" viewBox="0 0 24 24" width="18px" fill="none"><g><path d="M0,0h24v24H0V0z" fill="none"/></g><g><g><path d="M5,5h6c0.55,0,1-0.45,1-1v0c0-0.55-0.45-1-1-1H5C3.9,3,3,3.9,3,5v14c0,1.1,0.9,2,2,2h6c0.55,0,1-0.45,1-1v0 c0-0.55-0.45-1-1-1H5V5z"/><path d="M20.65,11.65l-2.79-2.79C17.54,8.54,17,8.76,17,9.21V11h-7c-0.55,0-1,0.45-1,1v0c0,0.55,0.45,1,1,1h7v1.79 c0,0.45,0.54,0.67,0.85,0.35l2.79-2.79C20.84,12.16,20.84,11.84,20.65,11.65z"/></g></g></svg>	
+                                            </span>
+                                            <?php esc_html_e( 'Logout', 'bookingpress-appointment-booking' ); ?>
+                                        </a>
+                                    </bp-ui-dropdown-item>
+                                </bp-ui-dropdown-menu>
+                            </template>
+                        </bp-ui-dropdown>
+                    </div>
+                </div>
+            </nav>
+        </div>
+        <?php 
+        if(!empty($bookingpress_upcomming_appointment) && isset($bookingpress_upcomming_appointment['booking_id']) &&  !empty($bookingpress_upcomming_appointment['booking_id'])) { ?>
+            <div id="staffmember_customize_notification_model_data">
+                <bp-ui-dialog v-cloak class="bpa-dialog bpa-dailog__small bpa-dialog--staff-upcoming-appointment" id="staffmember_customize_notification_model" title="" v-model="staffmember_customize_notification_model" :close-on-press-escape="close_modal_on_esc" :modal="is_mask_display" @open="bookingpress_enable_modal" @close="bookingpress_disable_modal">	
+                    <div class="bpa-dialog-body">
+                        <div class="bpa-sua__wrapper">
+                            <div class="bpa-sua-upcoming-pill">
+                                <bp-ui-tag><?php esc_html_e('Upcoming','bookingpress-appointment-booking'); ?></bp-ui-tag>
+                            </div>
+                        </div>
+                        <div class="bpa-sua__info-wrapper">
+                            <div class="bpa-sua-iw__head">
+                                <span><?php echo esc_html__('ID','bookingpress-appointment-booking').': #'.esc_html($bookingpress_upcomming_appointment['booking_id']); ?></span>
+                                <h4><?php  echo esc_html($bookingpress_upcomming_appointment['service_name']); ?></h4>
+                            </div>
+                            <div class="bpa-sua-iw__body">
+                                <div class="bpa-sua-iw__body-item">
+                                    <div class="bpa-sua-iw__body-item-row">
+                                        <span><?php esc_html_e('Date:','bookingpress-appointment-booking'); ?></span>
+                                        <p><?php  echo esc_html($bookingpress_upcomming_appointment['appointment_date']); ?></p>
+                                    </div>
+                                    <div class="bpa-sua-iw__body-item-row">
+                                        <span><?php esc_html_e('Duration:','bookingpress-appointment-booking'); ?></span>
+                                        <p><?php echo esc_html($bookingpress_upcomming_appointment['appointment_duration']); ?></p>
+                                    </div>
+                                </div>
+                                <div class="bpa-sua-iw__body-item">
+                                    <h5><?php esc_html_e('Customer Details','bookingpress-appointment-booking'); ?></h5>
+                                    <div class="bpa-sua-iw__body-item-row">
+                                        <span><?php esc_html_e('Full Name:','bookingpress-appointment-booking'); ?></span>
+                                        <p><?php echo esc_html($bookingpress_upcomming_appointment['customer_name']); ?></p>
+                                    </div>
+                                    <div class="bpa-sua-iw__body-item-row">
+                                        <span><?php esc_html_e('Email:','bookingpress-appointment-booking'); ?></span>
+                                        <p><?php echo esc_html($bookingpress_upcomming_appointment['customer_email']); ?></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </bp-ui-dialog>
+            </div>
+        <?php } ?>
+    </nav>
+    <?php
+    }
+    ?>
+
+    <div class="bpa-header--havbar__staff-mob bpa-header-navbar__staff-admin-mode <?php echo $request_module; ?>" id="bpa-staff-panel-mob-header">
+        <div class="bpa-staff-sidebar-navigation <?php echo $sidebar_navigation_class; ?> <?php echo $bookingpress_staff_panel_sidebar_classes; ?>" :class="(bpa_toggle_active == 1) ? '__bpa-is-active' : ''">
+            <div class="bpa-ssn__brand-logo">
+                <a href="#" class="bpa-ssn-logo--lg">
+                    <span class="bpa-ssn-logo-full">
+                        <svg width="140" height="36" viewBox="0 0 140 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M20.7106 17.4357C20.7106 17.4357 21.393 16.7489 21.393 14.6886C21.393 11.259 19.3414 10.5723 16.6293 10.5723H10.457V24.9815H14.5602V29.0978H16.6293V24.9815C19.009 24.9815 20.6625 24.9815 21.8786 23.4592C22.4611 22.7098 22.7698 21.7837 22.7535 20.8346C22.7603 20.3823 22.7014 19.9314 22.5785 19.496C22.2767 18.7218 22.0754 18.1181 20.7106 17.4357ZM18.659 22.9256H16.6293V20.8652C16.631 20.4598 16.7528 20.064 16.9793 19.7278C17.2058 19.3916 17.5268 19.13 17.9018 18.976C18.2769 18.8221 18.6891 18.7827 19.0865 18.8629C19.4839 18.943 19.8486 19.1391 20.1347 19.4264C20.4207 19.7136 20.6152 20.0792 20.6937 20.4769C20.7721 20.8747 20.731 21.2867 20.5755 21.6611C20.4199 22.0355 20.157 22.3554 19.8198 22.5804C19.4826 22.8055 19.0863 22.9256 18.6809 22.9256H18.659ZM16.9968 17.2388C16.6467 17.4069 16.3141 17.6091 16.0038 17.8425C15.5249 18.1789 15.1405 18.6328 14.8877 19.1607C14.6349 19.6885 14.5221 20.2725 14.5602 20.8565V22.9168H12.5086V12.6326H16.6293C18.2653 12.6326 19.3633 13.315 19.3633 14.6886C19.3414 15.9484 18.4009 16.5521 16.9968 17.2476V17.2388Z" fill="#12D488"/>
+                            <path d="M32.808 5.55689V31.6327C32.8091 32.5403 32.45 33.4113 31.8094 34.0544C31.1688 34.6974 30.2992 35.0599 29.3916 35.0622H3.41641C2.50876 35.0599 1.63914 34.6974 0.998565 34.0544C0.35799 33.4113 -0.00115934 32.5403 2.81166e-06 31.6327V5.55689C-0.00115934 4.64924 0.35799 3.77824 0.998565 3.1352C1.63914 2.49217 2.50876 2.12968 3.41641 2.12736H8.40759V1.09501C8.39842 0.954663 8.41815 0.813931 8.46555 0.681517C8.51295 0.549103 8.58702 0.427824 8.68317 0.325185C8.77932 0.222545 8.89552 0.140727 9.02456 0.0847933C9.1536 0.0288597 9.29274 0 9.43339 0C9.57403 0 9.71318 0.0288597 9.84222 0.0847933C9.97126 0.140727 10.0875 0.222545 10.1836 0.325185C10.2798 0.427824 10.3538 0.549103 10.4012 0.681517C10.4486 0.813931 10.4684 0.954663 10.4592 1.09501V5.21131C10.4684 5.35166 10.4486 5.49239 10.4012 5.6248C10.3538 5.75722 10.2798 5.87849 10.1836 5.98113C10.0875 6.08377 9.97126 6.16559 9.84222 6.22153C9.71318 6.27746 9.57403 6.30632 9.43339 6.30632C9.29274 6.30632 9.1536 6.27746 9.02456 6.22153C8.89552 6.16559 8.77932 6.08377 8.68317 5.98113C8.58702 5.87849 8.51295 5.75722 8.46555 5.6248C8.41815 5.49239 8.39842 5.35166 8.40759 5.21131V4.18333H4.09881C3.55429 4.18565 3.03293 4.40388 2.64913 4.79014C2.26533 5.1764 2.05043 5.69915 2.05159 6.24367V30.9459C2.05102 31.2153 2.10352 31.4822 2.20609 31.7313C2.30866 31.9805 2.4593 32.2069 2.6494 32.3979C2.8395 32.5888 3.06534 32.7404 3.31403 32.844C3.56272 32.9476 3.82939 33.0013 4.09881 33.0019H28.7048C28.9746 33.0019 29.2417 32.9486 29.4909 32.8453C29.7401 32.7419 29.9665 32.5904 30.157 32.3994C30.3476 32.2084 30.4986 31.9818 30.6015 31.7323C30.7043 31.4829 30.757 31.2157 30.7564 30.9459V6.24367C30.757 5.97368 30.7043 5.70621 30.6016 5.45655C30.4988 5.20689 30.3478 4.97992 30.1573 4.7886C29.9668 4.59728 29.7405 4.44536 29.4912 4.3415C29.242 4.23765 28.9748 4.1839 28.7048 4.18333H24.4004V5.21131C24.4096 5.35166 24.3898 5.49239 24.3424 5.6248C24.295 5.75722 24.221 5.87849 24.1248 5.98113C24.0287 6.08377 23.9125 6.16559 23.7834 6.22153C23.6544 6.27746 23.5152 6.30632 23.3746 6.30632C23.2339 6.30632 23.0948 6.27746 22.9658 6.22153C22.8367 6.16559 22.7205 6.08377 22.6244 5.98113C22.5282 5.87849 22.4542 5.75722 22.4068 5.6248C22.3594 5.49239 22.3396 5.35166 22.3488 5.21131V4.18333H18.4556C18.1829 4.18333 17.9215 4.07502 17.7287 3.88224C17.5359 3.68946 17.4276 3.42798 17.4276 3.15535C17.4276 3.02035 17.4542 2.88667 17.5058 2.76195C17.5575 2.63723 17.6332 2.52391 17.7287 2.42845C17.8241 2.33299 17.9375 2.25727 18.0622 2.20561C18.1869 2.15395 18.3206 2.12736 18.4556 2.12736H22.3488V1.09501C22.3396 0.954663 22.3594 0.813931 22.4068 0.681517C22.4542 0.549103 22.5282 0.427824 22.6244 0.325185C22.7205 0.222545 22.8367 0.140727 22.9658 0.0847933C23.0948 0.0288597 23.2339 0 23.3746 0C23.5152 0 23.6544 0.0288597 23.7834 0.0847933C23.9125 0.140727 24.0287 0.222545 24.1248 0.325185C24.221 0.427824 24.295 0.549103 24.3424 0.681517C24.3898 0.813931 24.4096 0.954663 24.4004 1.09501V2.12736H29.3916C30.2992 2.12968 31.1688 2.49217 31.8094 3.1352C32.45 3.77824 32.8091 4.64924 32.808 5.55689Z" fill="#12D488"/>
+                            <path d="M42.138 22.3399C41.5387 22.3399 40.9438 22.3399 40.3489 22.283C39.7251 22.2435 39.1051 22.1572 38.4941 22.025V11.4302C39.0425 11.3287 39.5959 11.2571 40.152 11.2158C40.7513 11.1677 41.3069 11.1458 41.8231 11.1458C42.4662 11.141 43.1087 11.1908 43.7434 11.2946C44.2722 11.377 44.7828 11.5501 45.2526 11.8064C45.6555 12.0289 45.9944 12.3513 46.2368 12.7425C46.4879 13.1875 46.612 13.6929 46.5955 14.2035C46.5948 14.6312 46.4765 15.0504 46.2536 15.4153C46.0306 15.7803 45.7115 16.0768 45.3313 16.2726C45.9168 16.451 46.4204 16.8306 46.753 17.3443C47.0071 17.8142 47.1366 18.3413 47.1292 18.8754C47.165 19.3829 47.068 19.8909 46.8479 20.3496C46.6278 20.8083 46.2921 21.2017 45.8737 21.4913C45.0309 22.057 43.7857 22.3399 42.138 22.3399ZM40.8913 15.5508H42.0943C42.6512 15.5901 43.2091 15.4893 43.7172 15.2578C43.878 15.1618 44.0089 15.023 44.0954 14.8569C44.1819 14.6909 44.2206 14.504 44.2071 14.3173C44.223 14.1299 44.1838 13.9419 44.0945 13.7764C44.0051 13.6109 43.8694 13.4751 43.704 13.3855C43.2376 13.1813 42.7295 13.0899 42.2211 13.1187H41.5475C41.3069 13.1187 41.11 13.1406 40.9001 13.1581L40.8913 15.5508ZM40.8913 17.4275V20.2533C41.0707 20.2533 41.2675 20.2927 41.4775 20.3014C41.6874 20.3102 41.9149 20.3014 42.173 20.3014C42.7836 20.3247 43.3921 20.2173 43.9578 19.9865C44.1774 19.8842 44.3602 19.7169 44.4815 19.5072C44.6028 19.2974 44.6567 19.0555 44.6358 18.8141C44.653 18.5987 44.6087 18.3828 44.508 18.1915C44.4074 18.0002 44.2545 17.8415 44.0671 17.7337C43.5604 17.4912 43.0008 17.3799 42.4398 17.41L40.8913 17.4275Z" fill="#202C45"/>
+                            <path d="M56.7357 18.0428C56.7422 18.6523 56.6461 19.2586 56.4514 19.8363C56.2764 20.3519 55.9964 20.8255 55.629 21.2273C55.2672 21.6069 54.8288 21.9051 54.3429 22.1022C53.2655 22.522 52.0696 22.522 50.9922 22.1022C50.5063 21.9051 50.0679 21.6069 49.7061 21.2273C49.3362 20.8251 49.052 20.3518 48.8706 19.8363C48.6635 19.2613 48.5613 18.6539 48.5687 18.0428C48.5619 17.4339 48.6672 16.8289 48.8793 16.258C49.0664 15.7475 49.3551 15.2802 49.728 14.8845C50.101 14.5063 50.5477 14.2085 51.0403 14.0096C51.5574 13.7958 52.1124 13.6887 52.6719 13.6946C53.2372 13.6879 53.7981 13.795 54.3211 14.0096C54.8154 14.2053 55.2626 14.5035 55.6334 14.8845C55.9882 15.2858 56.2615 15.7524 56.4383 16.258C56.6438 16.8303 56.7446 17.4348 56.7357 18.0428ZM54.3342 18.0428C54.3662 17.4414 54.2136 16.8446 53.8968 16.3324C53.7522 16.1387 53.5644 15.9814 53.3484 15.8731C53.1323 15.7647 52.8939 15.7083 52.6522 15.7083C52.4105 15.7083 52.1722 15.7647 51.9561 15.8731C51.7401 15.9814 51.5523 16.1387 51.4077 16.3324C51.0891 16.8438 50.9363 17.4412 50.9703 18.0428C50.9346 18.657 51.0872 19.2674 51.4077 19.7925C51.5494 19.9903 51.7363 20.1515 51.9527 20.2626C52.1691 20.3738 52.4089 20.4318 52.6522 20.4318C52.8956 20.4318 53.1354 20.3738 53.3518 20.2626C53.5682 20.1515 53.755 19.9903 53.8968 19.7925C54.2149 19.2664 54.3674 18.6567 54.3342 18.0428Z" fill="#202C45"/>
+                            <path d="M66.3165 18.0427C66.323 18.6523 66.2269 19.2586 66.0321 19.8362C65.8588 20.3526 65.5786 20.8266 65.2098 21.2273C64.848 21.6068 64.4096 21.9051 63.9237 22.1022C62.8477 22.5221 61.6532 22.5221 60.5773 22.1022C60.0895 21.9062 59.6494 21.6079 59.2868 21.2273C58.9199 20.8228 58.636 20.3502 58.4513 19.8362C58.2457 19.261 58.145 18.6536 58.1539 18.0427C58.1457 17.4341 58.2495 16.8291 58.4601 16.258C58.6569 15.7462 58.9544 15.2792 59.3349 14.8844C59.7077 14.5058 60.1544 14.208 60.6473 14.0096C61.1659 13.7958 61.7223 13.6887 62.2833 13.6946C62.8485 13.6883 63.4093 13.7954 63.9324 14.0096C64.417 14.2092 64.8549 14.5071 65.2185 14.8844C65.5731 15.2844 65.8439 15.7515 66.0146 16.258C66.2217 16.8299 66.3239 17.4345 66.3165 18.0427ZM63.9149 18.0427C63.947 17.4413 63.7943 16.8445 63.4775 16.3324C63.3417 16.1311 63.1567 15.9679 62.94 15.8584C62.7233 15.7489 62.4821 15.6967 62.2395 15.7068C61.9952 15.6973 61.7524 15.7497 61.5337 15.859C61.315 15.9684 61.1275 16.1312 60.9885 16.3324C60.6698 16.8437 60.517 17.4412 60.551 18.0427C60.5154 18.6569 60.668 19.2674 60.9885 19.7925C61.1251 19.997 61.3118 20.163 61.5308 20.2748C61.7498 20.3866 61.9938 20.4405 62.2395 20.4312C62.4875 20.4378 62.7329 20.3791 62.951 20.2608C63.1691 20.1426 63.3522 19.969 63.4819 19.7575C63.7918 19.241 63.9424 18.6445 63.9149 18.0427Z" fill="#202C45"/>
+                            <path d="M70.4848 16.8744L71.2022 16.0913C71.4515 15.8201 71.6877 15.5489 71.9196 15.2821L72.5757 14.5209L73.105 13.891H75.9003C75.3447 14.5341 74.7979 15.1465 74.2686 15.7283C73.7393 16.3101 73.1531 16.9137 72.5188 17.5349C72.8653 17.8536 73.1911 18.194 73.4943 18.5541C73.8312 18.9478 74.1549 19.359 74.4698 19.779C74.7848 20.1989 75.0779 20.6232 75.3447 21.0432C75.6115 21.4631 75.8303 21.8524 76.0096 22.198H73.3019C73.1356 21.9268 72.9432 21.6206 72.7288 21.2881C72.5145 20.9557 72.2914 20.6232 72.042 20.2908C71.7927 19.9583 71.5434 19.639 71.2765 19.3328C71.0347 19.0515 70.7683 18.7924 70.4804 18.5585V22.198H68.127V10.3259L70.4804 9.94531L70.4848 16.8744Z" fill="#202C45"/>
+                            <path d="M79.8503 11.4999C79.8562 11.6914 79.8201 11.8819 79.7446 12.058C79.669 12.2341 79.5558 12.3915 79.4129 12.5191C79.1387 12.7559 78.7886 12.8861 78.4264 12.8861C78.0642 12.8861 77.7141 12.7559 77.44 12.5191C77.1713 12.248 77.0205 11.8816 77.0205 11.4999C77.0205 11.1181 77.1713 10.7518 77.44 10.4806C77.7129 10.2413 78.0635 10.1094 78.4264 10.1094C78.7894 10.1094 79.14 10.2413 79.4129 10.4806C79.5572 10.6071 79.6714 10.7643 79.7471 10.9407C79.8228 11.117 79.8581 11.3081 79.8503 11.4999ZM79.6185 22.204H77.265V13.8927H79.6185V22.204Z" fill="#202C45"/>
+                            <path d="M81.8373 14.189C82.3454 14.0513 82.8609 13.9432 83.3815 13.8653C84.0403 13.7656 84.7056 13.7159 85.3719 13.7166C85.967 13.7008 86.5601 13.7942 87.1216 13.9921C87.5543 14.1511 87.9375 14.4211 88.2327 14.7752C88.5138 15.1268 88.714 15.536 88.8189 15.9737C88.9391 16.481 88.9979 17.001 88.9939 17.5223V22.2116H86.6404V17.8066C86.6833 17.2528 86.5792 16.6975 86.3386 16.1968C86.2092 16.0275 86.0378 15.8948 85.8414 15.8119C85.645 15.7291 85.4304 15.6989 85.2187 15.7244C85.0481 15.7244 84.8688 15.7244 84.6807 15.7244C84.4926 15.7244 84.322 15.7594 84.1733 15.7813V22.2116H81.8242L81.8373 14.189Z" fill="#202C45"/>
+                            <path d="M98.3031 21.1714C98.3031 22.5333 97.959 23.5409 97.2708 24.1941C96.5825 24.8474 95.5152 25.1769 94.0687 25.1827C93.5611 25.1832 93.0546 25.1378 92.5552 25.0471C92.0782 24.9674 91.6086 24.8489 91.151 24.6928L91.5578 22.7199C91.9345 22.8698 92.3239 22.9855 92.7214 23.0655C93.1764 23.1564 93.6397 23.1989 94.1037 23.1924C94.3586 23.2193 94.6163 23.1944 94.8614 23.1192C95.1064 23.044 95.3338 22.9201 95.5297 22.7549C95.6744 22.6038 95.7875 22.4254 95.8626 22.2302C95.9377 22.0349 95.9732 21.8267 95.9672 21.6176V21.3201C95.7163 21.4342 95.4537 21.5207 95.1842 21.5782C94.8964 21.6379 94.6032 21.6672 94.3093 21.6657C93.8242 21.6949 93.3385 21.619 92.8855 21.4431C92.4325 21.2672 92.0229 20.9954 91.6846 20.6465C91.0336 19.8454 90.7073 18.829 90.7704 17.7987C90.7613 17.2304 90.8577 16.6653 91.0547 16.1321C91.2287 15.6383 91.5112 15.1899 91.8815 14.8198C92.2513 14.464 92.6906 14.1884 93.1719 14.0105C93.7446 13.8071 94.3491 13.7078 94.9567 13.7174C95.2483 13.7174 95.54 13.7306 95.8316 13.7568C96.1232 13.783 96.4148 13.818 96.7065 13.8618C96.9995 13.9012 97.2795 13.9536 97.5507 14.0105C97.8219 14.0674 98.0581 14.1286 98.2681 14.1899L98.3031 21.1714ZM93.1369 17.7944C93.1369 19.1067 93.6706 19.7672 94.7336 19.7672C94.9632 19.7696 95.1918 19.7372 95.4116 19.671C95.5986 19.6185 95.7791 19.5451 95.9497 19.4523V15.6903C95.836 15.6903 95.696 15.6509 95.5385 15.6378C95.3554 15.619 95.1714 15.6103 94.9873 15.6115C94.7248 15.595 94.4623 15.6425 94.2223 15.75C93.9822 15.8574 93.7719 16.0216 93.6094 16.2283C93.2842 16.6843 93.1182 17.2346 93.1369 17.7944Z" fill="#202C45"/>
+                            <path d="M103.955 11.1426C105.585 11.1426 106.839 11.4342 107.717 12.0175C108.592 12.5949 109.029 13.531 109.029 14.8389C109.029 16.1469 108.592 17.1049 107.717 17.6867C106.842 18.2685 105.569 18.5616 103.928 18.5616H103.154V22.2229H100.691V11.4444C101.254 11.3358 101.822 11.2613 102.393 11.2213C102.979 11.1645 103.504 11.1426 103.955 11.1426ZM104.117 13.2423C103.937 13.2423 103.758 13.2423 103.587 13.2423L103.15 13.2773V16.4356H103.924C104.584 16.4728 105.244 16.3528 105.849 16.0856C106.075 15.9559 106.257 15.7618 106.372 15.5281C106.488 15.2944 106.531 15.0316 106.496 14.7733C106.505 14.5111 106.448 14.2508 106.33 14.0166C106.22 13.8158 106.056 13.6493 105.858 13.5354C105.625 13.4041 105.37 13.318 105.105 13.2817C104.774 13.2412 104.441 13.2281 104.108 13.2423H104.117Z" fill="#202C45"/>
+                            <path d="M115.694 15.9943C115.484 15.9418 115.234 15.8849 114.95 15.828C114.649 15.7689 114.343 15.7396 114.036 15.7405C113.859 15.7426 113.682 15.7558 113.506 15.7799C113.349 15.7976 113.192 15.8268 113.038 15.8674V22.2146H110.672V14.3407C111.161 14.1673 111.659 14.0213 112.164 13.9033C112.794 13.7664 113.438 13.7003 114.084 13.7064C114.211 13.7064 114.364 13.7064 114.543 13.7283C114.723 13.7502 114.902 13.7677 115.081 13.7939L115.615 13.8858C115.772 13.9177 115.925 13.963 116.074 14.0214L115.694 15.9943Z" fill="#202C45"/>
+                            <path d="M116.798 18.1175C116.784 17.4569 116.9 16.8 117.139 16.184C117.338 15.6708 117.635 15.2012 118.014 14.8017C118.375 14.4375 118.809 14.1529 119.287 13.9662C119.756 13.7792 120.256 13.6827 120.761 13.6819C121.277 13.6546 121.793 13.7368 122.274 13.923C122.756 14.1092 123.193 14.3953 123.556 14.7623C124.245 15.4827 124.587 16.5442 124.584 17.9469C124.584 18.0825 124.584 18.2312 124.584 18.3843C124.584 18.5374 124.563 18.6905 124.554 18.8218H119.217C119.238 19.0517 119.31 19.2742 119.427 19.4731C119.544 19.6721 119.704 19.8425 119.895 19.9722C120.373 20.283 120.936 20.436 121.505 20.4097C121.932 20.4102 122.358 20.3707 122.778 20.2916C123.127 20.231 123.469 20.1327 123.797 19.9985L124.112 21.9101C123.948 21.9871 123.779 22.05 123.605 22.0982C123.375 22.1673 123.141 22.2228 122.905 22.2644C122.647 22.3125 122.371 22.3519 122.073 22.3825C121.783 22.4135 121.491 22.4296 121.199 22.4307C120.533 22.4456 119.871 22.3328 119.248 22.0982C118.73 21.8996 118.261 21.5906 117.874 21.1927C117.508 20.8016 117.233 20.3339 117.069 19.8235C116.887 19.2732 116.796 18.6971 116.798 18.1175ZM122.327 17.2426C122.318 17.0438 122.284 16.8469 122.227 16.6564C122.169 16.4717 122.077 16.2996 121.955 16.149C121.828 15.9984 121.672 15.8749 121.496 15.7859C121.28 15.6945 121.048 15.6474 120.814 15.6474C120.579 15.6474 120.347 15.6945 120.131 15.7859C119.95 15.8684 119.789 15.9893 119.659 16.1403C119.531 16.2918 119.432 16.4652 119.366 16.6521C119.297 16.8452 119.247 17.0444 119.217 17.247L122.327 17.2426Z" fill="#202C45"/>
+                            <path d="M128.802 20.5134C129.114 20.534 129.426 20.4908 129.721 20.3865C129.81 20.3417 129.883 20.2708 129.931 20.1832C129.979 20.0957 129.998 19.9957 129.988 19.8966C129.979 19.7905 129.941 19.6888 129.88 19.602C129.818 19.5151 129.735 19.4462 129.638 19.4023C129.302 19.2079 128.949 19.0453 128.584 18.9167C128.241 18.7892 127.905 18.6432 127.577 18.4793C127.296 18.3437 127.038 18.1651 126.812 17.95C126.6 17.7409 126.434 17.4908 126.322 17.2151C126.201 16.8877 126.143 16.5404 126.151 16.1915C126.139 15.8355 126.211 15.4818 126.364 15.1598C126.516 14.8378 126.743 14.5571 127.026 14.3411C127.723 13.8548 128.562 13.616 129.41 13.6631C129.898 13.6604 130.384 13.7058 130.863 13.7987C131.239 13.8625 131.61 13.9591 131.969 14.0874L131.558 15.9202C131.271 15.8213 130.979 15.7366 130.683 15.6665C130.328 15.5915 129.966 15.5548 129.603 15.5572C128.868 15.5572 128.496 15.7628 128.496 16.174C128.495 16.2609 128.511 16.3471 128.544 16.4277C128.586 16.5136 128.651 16.5863 128.732 16.6376C128.856 16.7228 128.986 16.7975 129.122 16.8607C129.283 16.9395 129.493 17.027 129.747 17.1232C130.185 17.2822 130.612 17.4707 131.024 17.6875C131.321 17.8438 131.59 18.0477 131.821 18.2912C132.011 18.4958 132.151 18.7412 132.232 19.0086C132.315 19.306 132.355 19.614 132.35 19.9228C132.37 20.2861 132.295 20.6483 132.134 20.9741C131.972 21.2999 131.728 21.5783 131.427 21.7819C130.634 22.249 129.72 22.4684 128.802 22.4118C128.183 22.4233 127.565 22.3601 126.961 22.2238C126.613 22.1438 126.272 22.037 125.941 21.9044L126.335 19.9972C126.735 20.154 127.148 20.2769 127.569 20.3646C127.973 20.4581 128.387 20.508 128.802 20.5134Z" fill="#202C45"/>
+                            <path d="M136.484 20.5135C136.794 20.5342 137.106 20.491 137.398 20.3867C137.489 20.343 137.563 20.2725 137.612 20.1847C137.66 20.097 137.681 19.9964 137.67 19.8967C137.661 19.7907 137.623 19.689 137.562 19.6021C137.5 19.5152 137.417 19.4463 137.32 19.4024C136.983 19.2082 136.628 19.0456 136.261 18.9169C135.92 18.7886 135.585 18.6426 135.259 18.4794C134.978 18.3438 134.72 18.1652 134.494 17.9501C134.282 17.741 134.116 17.491 134.004 17.2152C133.881 16.8882 133.822 16.5408 133.829 16.1916C133.816 15.8357 133.889 15.4819 134.041 15.1599C134.193 14.838 134.421 14.5572 134.704 14.3412C135.4 13.8543 136.24 13.6155 137.088 13.6632C137.575 13.6607 138.062 13.7061 138.54 13.7988C138.917 13.8633 139.287 13.9599 139.647 14.0875L139.236 15.9204C138.948 15.8214 138.657 15.7367 138.361 15.6667C138.006 15.5916 137.643 15.555 137.28 15.5573C136.541 15.5573 136.174 15.7629 136.174 16.1741C136.173 16.261 136.189 16.3473 136.222 16.4278C136.264 16.5138 136.329 16.5864 136.41 16.6378C136.533 16.724 136.663 16.7986 136.799 16.8609C136.961 16.9396 137.171 17.0271 137.42 17.1234C137.85 17.2871 138.268 17.4801 138.671 17.7008C138.968 17.8571 139.237 18.061 139.468 18.3044C139.658 18.509 139.798 18.7544 139.879 19.0218C139.962 19.3193 140.002 19.6272 139.997 19.9361C140.017 20.2993 139.942 20.6615 139.781 20.9874C139.619 21.3132 139.375 21.5916 139.074 21.7952C138.281 22.2621 137.367 22.4814 136.449 22.4251C135.832 22.4363 135.215 22.3732 134.612 22.237C134.265 22.157 133.924 22.0503 133.593 21.9177L133.986 20.0105C134.386 20.1679 134.799 20.2908 135.22 20.3779C135.635 20.4692 136.059 20.5146 136.484 20.5135Z" fill="#202C45"/>
+                        </svg>
+                    </span>
+                    <span class="bpa-ssn-log-folded">
+                        <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M20.7106 17.4357C20.7106 17.4357 21.393 16.7489 21.393 14.6886C21.393 11.259 19.3414 10.5723 16.6293 10.5723H10.457V24.9815H14.5602V29.0978H16.6293V24.9815C19.009 24.9815 20.6625 24.9815 21.8786 23.4592C22.4611 22.7098 22.7698 21.7837 22.7535 20.8346C22.7603 20.3823 22.7014 19.9314 22.5785 19.496C22.2767 18.7218 22.0754 18.1181 20.7106 17.4357ZM18.659 22.9256H16.6293V20.8652C16.631 20.4598 16.7528 20.064 16.9793 19.7278C17.2058 19.3916 17.5268 19.13 17.9018 18.976C18.2769 18.8221 18.6891 18.7827 19.0865 18.8629C19.4839 18.943 19.8486 19.1391 20.1347 19.4264C20.4207 19.7136 20.6152 20.0792 20.6937 20.4769C20.7721 20.8747 20.731 21.2867 20.5755 21.6611C20.4199 22.0355 20.157 22.3554 19.8198 22.5804C19.4826 22.8055 19.0863 22.9256 18.6809 22.9256H18.659ZM16.9968 17.2388C16.6467 17.4069 16.3141 17.6091 16.0038 17.8425C15.5249 18.1789 15.1405 18.6328 14.8877 19.1607C14.6349 19.6885 14.5221 20.2725 14.5602 20.8565V22.9168H12.5086V12.6326H16.6293C18.2653 12.6326 19.3633 13.315 19.3633 14.6886C19.3414 15.9484 18.4009 16.5521 16.9968 17.2476V17.2388Z" fill="#12D488"/>
+                            <path d="M32.808 5.55689V31.6327C32.8091 32.5403 32.45 33.4113 31.8094 34.0544C31.1688 34.6974 30.2992 35.0599 29.3916 35.0622H3.41641C2.50876 35.0599 1.63914 34.6974 0.998565 34.0544C0.35799 33.4113 -0.00115934 32.5403 2.81166e-06 31.6327V5.55689C-0.00115934 4.64924 0.35799 3.77824 0.998565 3.1352C1.63914 2.49217 2.50876 2.12968 3.41641 2.12736H8.40759V1.09501C8.39842 0.954663 8.41815 0.813931 8.46555 0.681517C8.51295 0.549103 8.58702 0.427824 8.68317 0.325185C8.77932 0.222545 8.89552 0.140727 9.02456 0.0847933C9.1536 0.0288597 9.29274 0 9.43339 0C9.57403 0 9.71318 0.0288597 9.84222 0.0847933C9.97126 0.140727 10.0875 0.222545 10.1836 0.325185C10.2798 0.427824 10.3538 0.549103 10.4012 0.681517C10.4486 0.813931 10.4684 0.954663 10.4592 1.09501V5.21131C10.4684 5.35166 10.4486 5.49239 10.4012 5.6248C10.3538 5.75722 10.2798 5.87849 10.1836 5.98113C10.0875 6.08377 9.97126 6.16559 9.84222 6.22153C9.71318 6.27746 9.57403 6.30632 9.43339 6.30632C9.29274 6.30632 9.1536 6.27746 9.02456 6.22153C8.89552 6.16559 8.77932 6.08377 8.68317 5.98113C8.58702 5.87849 8.51295 5.75722 8.46555 5.6248C8.41815 5.49239 8.39842 5.35166 8.40759 5.21131V4.18333H4.09881C3.55429 4.18565 3.03293 4.40388 2.64913 4.79014C2.26533 5.1764 2.05043 5.69915 2.05159 6.24367V30.9459C2.05102 31.2153 2.10352 31.4822 2.20609 31.7313C2.30866 31.9805 2.4593 32.2069 2.6494 32.3979C2.8395 32.5888 3.06534 32.7404 3.31403 32.844C3.56272 32.9476 3.82939 33.0013 4.09881 33.0019H28.7048C28.9746 33.0019 29.2417 32.9486 29.4909 32.8453C29.7401 32.7419 29.9665 32.5904 30.157 32.3994C30.3476 32.2084 30.4986 31.9818 30.6015 31.7323C30.7043 31.4829 30.757 31.2157 30.7564 30.9459V6.24367C30.757 5.97368 30.7043 5.70621 30.6016 5.45655C30.4988 5.20689 30.3478 4.97992 30.1573 4.7886C29.9668 4.59728 29.7405 4.44536 29.4912 4.3415C29.242 4.23765 28.9748 4.1839 28.7048 4.18333H24.4004V5.21131C24.4096 5.35166 24.3898 5.49239 24.3424 5.6248C24.295 5.75722 24.221 5.87849 24.1248 5.98113C24.0287 6.08377 23.9125 6.16559 23.7834 6.22153C23.6544 6.27746 23.5152 6.30632 23.3746 6.30632C23.2339 6.30632 23.0948 6.27746 22.9658 6.22153C22.8367 6.16559 22.7205 6.08377 22.6244 5.98113C22.5282 5.87849 22.4542 5.75722 22.4068 5.6248C22.3594 5.49239 22.3396 5.35166 22.3488 5.21131V4.18333H18.4556C18.1829 4.18333 17.9215 4.07502 17.7287 3.88224C17.5359 3.68946 17.4276 3.42798 17.4276 3.15535C17.4276 3.02035 17.4542 2.88667 17.5058 2.76195C17.5575 2.63723 17.6332 2.52391 17.7287 2.42845C17.8241 2.33299 17.9375 2.25727 18.0622 2.20561C18.1869 2.15395 18.3206 2.12736 18.4556 2.12736H22.3488V1.09501C22.3396 0.954663 22.3594 0.813931 22.4068 0.681517C22.4542 0.549103 22.5282 0.427824 22.6244 0.325185C22.7205 0.222545 22.8367 0.140727 22.9658 0.0847933C23.0948 0.0288597 23.2339 0 23.3746 0C23.5152 0 23.6544 0.0288597 23.7834 0.0847933C23.9125 0.140727 24.0287 0.222545 24.1248 0.325185C24.221 0.427824 24.295 0.549103 24.3424 0.681517C24.3898 0.813931 24.4096 0.954663 24.4004 1.09501V2.12736H29.3916C30.2992 2.12968 31.1688 2.49217 31.8094 3.1352C32.45 3.77824 32.8091 4.64924 32.808 5.55689Z" fill="#12D488"/>
+                        </svg>
+                    </span>
+                </a>
+                <a href="#" class="bpa-ssn-logo--sm">
+                    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="64" height="64" rx="12"/>
+                        <path d="M50 18.9608V47.2745C50 49.3359 48.325 51 46.25 51H17.75C15.675 51 14 49.3359 14 47.2745V18.9608C14 16.8993 15.675 15.2353 17.75 15.2353H23V14.1176C23 13.7451 23.375 13 24.125 13C24.875 13 25.25 13.7451 25.25 14.1176V18.5882C25.25 18.9608 24.875 19.7059 24.125 19.7059C23.375 19.7059 23 18.9608 23 18.5882V17.4706H18.5C17.25 17.4706 16.25 18.4641 16.25 19.7059V46.5294C16.25 47.7712 17.25 48.7647 18.5 48.7647H45.5C46.75 48.7647 47.75 47.7712 47.75 46.5294V19.7059C47.75 18.4641 46.75 17.4706 45.5 17.4706H41C41 17.4706 41 18.0418 41 18.5882C41 18.9608 40.625 19.7059 39.875 19.7059C39.125 19.7059 38.75 18.9608 38.75 18.5882V17.4706H33.125C32.5 17.4706 32 16.9739 32 16.3529C32 15.732 32.5 15.2353 33.125 15.2353H38.75V14.1176C38.75 13.7451 39.125 13 39.875 13C40.625 13 41 13.7451 41 14.1176V15.2353H46.25C48.325 15.2353 50 16.8993 50 18.9608Z" fill="white"/>
+                        <path d="M37.2501 30.8823C37.2501 30.8823 38.0001 30.1372 38.0001 27.9019C38.0001 24.1765 35.7501 23.4314 32.7501 23.4314H26.0001V39.0784H30.5001V43.549H32.7501V39.0784C35.3501 39.0784 37.1751 39.0784 38.5251 37.4144C39.1751 36.6196 39.5001 35.6013 39.5001 34.5582C39.5001 34.0118 39.4251 33.4654 39.3001 33.1176C38.9751 32.2732 38.7501 31.6274 37.2501 30.8823ZM35.0001 36.8431C34.2501 36.8431 32.7501 36.8431 32.7501 36.8431C32.7501 36.8431 32.7501 36.098 32.7501 34.6078C32.7501 33.366 33.7501 32.3725 35.0001 32.3725C36.2001 32.3725 37.2501 33.3412 37.2501 34.6078C37.2501 35.9242 36.1501 36.8431 35.0001 36.8431ZM33.1751 30.6836C32.8001 30.8575 32.4251 31.081 32.0751 31.3294C31.2501 31.9503 30.5001 32.8444 30.5001 34.6078V36.8431H28.2501V25.6667H32.7501C34.5501 25.6667 35.7501 26.4118 35.7501 27.9019C35.7501 29.268 34.7251 29.9137 33.1751 30.6836Z" fill="white"/>
+                    </svg>
+                </a>		
+            </div>
+            <div class="bpa-ssn__navbar-wrap">		
+                <ul class="bpa-ssn__navbar">
+                    <?php  if ( $BookingPressPro->bookingpress_check_capability( 'bookingpress' ) ) { ?>
+                    <li>
+                        <a href="<?php echo esc_url( admin_url() . 'admin.php?page=bookingpress'); // phpcs:ignore ?>" class="<?php echo ( 'dashboard' == $request_module ) ? '__bpa-is-active' : ''; ?>">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6.75 3C3.88235 3 3 3.88235 3 6.75C3 9.61765 3.88235 10.5 6.75 10.5C9.61765 10.5 10.5 9.61765 10.5 6.75C10.5 3.88235 9.61765 3 6.75 3Z" stroke="#576582" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M6.75 13.5C3.88235 13.5 3 14.3824 3 17.25C3 20.1176 3.88235 21 6.75 21C9.61765 21 10.5 20.1176 10.5 17.25C10.5 14.3824 9.61765 13.5 6.75 13.5Z" stroke="#576582" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M17.25 13.5C14.3824 13.5 13.5 14.3824 13.5 17.25C13.5 20.1176 14.3824 21 17.25 21C20.1176 21 21 20.1176 21 17.25C21 14.3824 20.1176 13.5 17.25 13.5Z" stroke="#576582" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M17.25 3C14.3824 3 13.5 3.88235 13.5 6.75C13.5 9.61765 14.3824 10.5 17.25 10.5C20.1176 10.5 21 9.61765 21 6.75C21 3.88235 20.1176 3 17.25 3Z" stroke="#576582" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+
+                            <span class="menu-item-text"><?php esc_html_e( 'Dashboard', 'bookingpress-appointment-booking' ); ?></span>
+                        </a>
+                    </li>
+                    <?php }
+                    if ( $BookingPressPro->bookingpress_check_capability( 'bookingpress_calendar' ) ) {
+                    ?>
+                    <li>
+                        <a href="<?php echo add_query_arg( 'page', 'bookingpress-calendar', esc_url( admin_url() . 'admin.php?page=bookingpress' ) ); // phpcs:ignore ?>" class="<?php echo ( 'calendar' == $request_module ) ? '__bpa-is-active' : ''; ?>">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M3.5 6.6875C3.5 6.12391 3.72388 5.58341 4.1224 5.1849C4.52091 4.78638 5.06141 4.5625 5.625 4.5625H18.375C18.9386 4.5625 19.4791 4.78638 19.8776 5.1849C20.2761 5.58341 20.5 6.12391 20.5 6.6875V19.4375C20.5 20.0011 20.2761 20.5416 19.8776 20.9401C19.4791 21.3386 18.9386 21.5625 18.375 21.5625H5.625C5.06141 21.5625 4.52091 21.3386 4.1224 20.9401C3.72388 20.5416 3.5 20.0011 3.5 19.4375V6.6875Z" stroke="#576582" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M16.25 2.4375V6.6875" stroke="#576582" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M7.75 2.4375V6.6875" stroke="#576582" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M3.5 10.9375H20.5" stroke="#576582" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M6.6875 14.125H6.7005" stroke="#576582" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M9.88477 14.125H9.88977" stroke="#576582" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M13.0723 14.125H13.0773" stroke="#576582" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M16.2656 14.125H16.2706" stroke="#576582" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M13.0781 17.3125H13.0831" stroke="#576582" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M6.69727 17.3125H6.70227" stroke="#576582" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M9.88477 17.3125H9.88977" stroke="#576582" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                            <span class="menu-item-text"><?php esc_html_e( 'Calendar', 'bookingpress-appointment-booking' ); ?></span>
+                        </a>
+                    </li>
+                    <?php }
+                    if ( $BookingPressPro->bookingpress_check_capability( 'bookingpress_appointments' ) ) {
+                    ?>
+                    <li>
+                        <a href="<?php echo add_query_arg( 'page', $bookingpress_slugs->bookingpress_appointments, esc_url( admin_url() . 'admin.php?page=bookingpress' ) ); // phpcs:ignore ?>" class="<?php echo ( 'appointments' == $request_module ) ? '__bpa-is-active' : ''; ?>">
+                            
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M10.3611 21.4729H5.61111C5.05121 21.4729 4.51424 21.2505 4.11833 20.8545C3.72242 20.4586 3.5 19.9217 3.5 19.3618V6.6951C3.5 6.13519 3.72242 5.59822 4.11833 5.20231C4.51424 4.8064 5.05121 4.58398 5.61111 4.58398H18.2778C18.8377 4.58398 19.3746 4.8064 19.7706 5.20231C20.1665 5.59822 20.3889 6.13519 20.3889 6.6951V9.86176" stroke="#576582" stroke-width="1.58333" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M16.166 2.47266V6.69488" stroke="#576582" stroke-width="1.58333" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M7.72266 2.47266V6.69488" stroke="#576582" stroke-width="1.58333" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M3.5 10.916H14.0556" stroke="#576582" stroke-width="1.58333" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M14.0547 18.3062C14.0547 19.426 14.4995 20.4999 15.2913 21.2918C16.0832 22.0836 17.1571 22.5284 18.2769 22.5284C19.3967 22.5284 20.4707 22.0836 21.2625 21.2918C22.0543 20.4999 22.4991 19.426 22.4991 18.3062C22.4991 17.1864 22.0543 16.1125 21.2625 15.3206C20.4707 14.5288 19.3967 14.084 18.2769 14.084C17.1571 14.084 16.0832 14.5288 15.2913 15.3206C14.4995 16.1125 14.0547 17.1864 14.0547 18.3062Z" stroke="#576582" stroke-width="1.58333" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M18.2773 16.7227V18.306L18.8051 18.8338" stroke="#576582" stroke-width="1.58333" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span class="menu-item-text"><?php esc_html_e( 'Appointments', 'bookingpress-appointment-booking' ); ?></span>
+                        </a>
+                    </li>
+                    <?php }
+                    if ( $BookingPressPro->bookingpress_check_capability( 'bookingpress_customers' ) ) {
+                    ?>
+                    <li>
+                        <a href="<?php echo add_query_arg( 'page', $bookingpress_slugs->bookingpress_customers, esc_url( admin_url() . 'admin.php?page=bookingpress' ) ); // phpcs:ignore ?>" class="<?php echo ( 'customers' == $request_module || 'bookingpress_customers' == $request_module ) ? '__bpa-is-active' : ''; ?>">
+                            
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <mask id="path-1-outside-1_4169_3414" maskUnits="userSpaceOnUse" x="1" y="1" width="22" height="22" fill="black">
+                                <rect fill="white" x="1" y="1" width="22" height="22"/>
+                                <path d="M12 3.25C11.5027 3.25 11.0258 3.44754 10.6742 3.79917C10.3225 4.15081 10.125 4.62772 10.125 5.125C10.125 5.62228 10.3225 6.09919 10.6742 6.45083C11.0258 6.80246 11.5027 7 12 7C12.4973 7 12.9742 6.80246 13.3258 6.45083C13.6775 6.09919 13.875 5.62228 13.875 5.125C13.875 4.62772 13.6775 4.15081 13.3258 3.79917C12.9742 3.44754 12.4973 3.25 12 3.25ZM8.875 5.125C8.875 4.2962 9.20424 3.50134 9.79029 2.91529C10.3763 2.32924 11.1712 2 12 2C12.8288 2 13.6237 2.32924 14.2097 2.91529C14.7958 3.50134 15.125 4.2962 15.125 5.125C15.125 5.9538 14.7958 6.74866 14.2097 7.33471C13.6237 7.92076 12.8288 8.25 12 8.25C11.1712 8.25 10.3763 7.92076 9.79029 7.33471C9.20424 6.74866 8.875 5.9538 8.875 5.125ZM18.875 4.5C18.5435 4.5 18.2255 4.6317 17.9911 4.86612C17.7567 5.10054 17.625 5.41848 17.625 5.75C17.625 6.08152 17.7567 6.39946 17.9911 6.63388C18.2255 6.8683 18.5435 7 18.875 7C19.2065 7 19.5245 6.8683 19.7589 6.63388C19.9933 6.39946 20.125 6.08152 20.125 5.75C20.125 5.41848 19.9933 5.10054 19.7589 4.86612C19.5245 4.6317 19.2065 4.5 18.875 4.5ZM16.375 5.75C16.375 5.08696 16.6384 4.45107 17.1072 3.98223C17.5761 3.51339 18.212 3.25 18.875 3.25C19.538 3.25 20.1739 3.51339 20.6428 3.98223C21.1116 4.45107 21.375 5.08696 21.375 5.75C21.375 6.41304 21.1116 7.04893 20.6428 7.51777C20.1739 7.98661 19.538 8.25 18.875 8.25C18.212 8.25 17.5761 7.98661 17.1072 7.51777C16.6384 7.04893 16.375 6.41304 16.375 5.75ZM3.875 5.75C3.875 5.41848 4.0067 5.10054 4.24112 4.86612C4.47554 4.6317 4.79348 4.5 5.125 4.5C5.45652 4.5 5.77446 4.6317 6.00888 4.86612C6.2433 5.10054 6.375 5.41848 6.375 5.75C6.375 6.08152 6.2433 6.39946 6.00888 6.63388C5.77446 6.8683 5.45652 7 5.125 7C4.79348 7 4.47554 6.8683 4.24112 6.63388C4.0067 6.39946 3.875 6.08152 3.875 5.75ZM5.125 3.25C4.46196 3.25 3.82607 3.51339 3.35723 3.98223C2.88839 4.45107 2.625 5.08696 2.625 5.75C2.625 6.41304 2.88839 7.04893 3.35723 7.51777C3.82607 7.98661 4.46196 8.25 5.125 8.25C5.78804 8.25 6.42393 7.98661 6.89277 7.51777C7.36161 7.04893 7.625 6.41304 7.625 5.75C7.625 5.08696 7.36161 4.45107 6.89277 3.98223C6.42393 3.51339 5.78804 3.25 5.125 3.25ZM5.875 18.2475C5.53654 18.2644 5.19817 18.2124 4.88045 18.0945C4.56272 17.9767 4.27228 17.7954 4.02677 17.5618C3.78125 17.3282 3.58579 17.0472 3.45226 16.7357C3.31873 16.4242 3.24992 16.0889 3.25 15.75V11.0625C3.25 10.9796 3.28292 10.9001 3.34153 10.8415C3.40013 10.7829 3.47962 10.75 3.5625 10.75H5.7675C5.8175 10.2913 5.98 9.865 6.22375 9.5H3.5625C2.7 9.5 2 10.2 2 11.0625V15.75C1.99994 16.2851 2.11442 16.8141 2.33575 17.3013C2.55708 17.7886 2.88013 18.2228 3.28319 18.5748C3.68626 18.9269 4.16 19.1885 4.67258 19.3423C5.18517 19.4961 5.72473 19.5383 6.255 19.4662C6.08676 19.0741 5.95942 18.6657 5.875 18.2475ZM17.745 19.4662C18.2753 19.5383 18.8148 19.4961 19.3274 19.3423C19.84 19.1885 20.3137 18.9269 20.7168 18.5748C21.1199 18.2228 21.4429 17.7886 21.6642 17.3013C21.8856 16.8141 22.0001 16.2851 22 15.75V11.0625C22 10.2 21.3 9.5 20.4375 9.5H17.7763C18.0212 9.865 18.1825 10.2913 18.2325 10.75H20.4375C20.5204 10.75 20.5999 10.7829 20.6585 10.8415C20.7171 10.9001 20.75 10.9796 20.75 11.0625V15.75C20.7501 16.0889 20.6813 16.4242 20.5477 16.7357C20.4142 17.0472 20.2187 17.3282 19.9732 17.5618C19.7277 17.7954 19.4373 17.9767 19.1196 18.0945C18.8018 18.2124 18.4635 18.2644 18.125 18.2475C18.0406 18.6657 17.9132 19.0741 17.745 19.4662ZM8.5625 9.5C7.7 9.5 7 10.2 7 11.0625V17C7 18.3261 7.52678 19.5979 8.46447 20.5355C9.40215 21.4732 10.6739 22 12 22C13.3261 22 14.5979 21.4732 15.5355 20.5355C16.4732 19.5979 17 18.3261 17 17V11.0625C17 10.2 16.3 9.5 15.4375 9.5H8.5625ZM8.25 11.0625C8.25 10.9796 8.28292 10.9001 8.34153 10.8415C8.40013 10.7829 8.47962 10.75 8.5625 10.75H15.4375C15.5204 10.75 15.5999 10.7829 15.6585 10.8415C15.7171 10.9001 15.75 10.9796 15.75 11.0625V17C15.75 17.9946 15.3549 18.9484 14.6517 19.6517C13.9484 20.3549 12.9946 20.75 12 20.75C11.0054 20.75 10.0516 20.3549 9.34835 19.6517C8.64509 18.9484 8.25 17.9946 8.25 17V11.0625Z"/>
+                                </mask>
+                                <path d="M12 3.25C11.5027 3.25 11.0258 3.44754 10.6742 3.79917C10.3225 4.15081 10.125 4.62772 10.125 5.125C10.125 5.62228 10.3225 6.09919 10.6742 6.45083C11.0258 6.80246 11.5027 7 12 7C12.4973 7 12.9742 6.80246 13.3258 6.45083C13.6775 6.09919 13.875 5.62228 13.875 5.125C13.875 4.62772 13.6775 4.15081 13.3258 3.79917C12.9742 3.44754 12.4973 3.25 12 3.25ZM8.875 5.125C8.875 4.2962 9.20424 3.50134 9.79029 2.91529C10.3763 2.32924 11.1712 2 12 2C12.8288 2 13.6237 2.32924 14.2097 2.91529C14.7958 3.50134 15.125 4.2962 15.125 5.125C15.125 5.9538 14.7958 6.74866 14.2097 7.33471C13.6237 7.92076 12.8288 8.25 12 8.25C11.1712 8.25 10.3763 7.92076 9.79029 7.33471C9.20424 6.74866 8.875 5.9538 8.875 5.125ZM18.875 4.5C18.5435 4.5 18.2255 4.6317 17.9911 4.86612C17.7567 5.10054 17.625 5.41848 17.625 5.75C17.625 6.08152 17.7567 6.39946 17.9911 6.63388C18.2255 6.8683 18.5435 7 18.875 7C19.2065 7 19.5245 6.8683 19.7589 6.63388C19.9933 6.39946 20.125 6.08152 20.125 5.75C20.125 5.41848 19.9933 5.10054 19.7589 4.86612C19.5245 4.6317 19.2065 4.5 18.875 4.5ZM16.375 5.75C16.375 5.08696 16.6384 4.45107 17.1072 3.98223C17.5761 3.51339 18.212 3.25 18.875 3.25C19.538 3.25 20.1739 3.51339 20.6428 3.98223C21.1116 4.45107 21.375 5.08696 21.375 5.75C21.375 6.41304 21.1116 7.04893 20.6428 7.51777C20.1739 7.98661 19.538 8.25 18.875 8.25C18.212 8.25 17.5761 7.98661 17.1072 7.51777C16.6384 7.04893 16.375 6.41304 16.375 5.75ZM3.875 5.75C3.875 5.41848 4.0067 5.10054 4.24112 4.86612C4.47554 4.6317 4.79348 4.5 5.125 4.5C5.45652 4.5 5.77446 4.6317 6.00888 4.86612C6.2433 5.10054 6.375 5.41848 6.375 5.75C6.375 6.08152 6.2433 6.39946 6.00888 6.63388C5.77446 6.8683 5.45652 7 5.125 7C4.79348 7 4.47554 6.8683 4.24112 6.63388C4.0067 6.39946 3.875 6.08152 3.875 5.75ZM5.125 3.25C4.46196 3.25 3.82607 3.51339 3.35723 3.98223C2.88839 4.45107 2.625 5.08696 2.625 5.75C2.625 6.41304 2.88839 7.04893 3.35723 7.51777C3.82607 7.98661 4.46196 8.25 5.125 8.25C5.78804 8.25 6.42393 7.98661 6.89277 7.51777C7.36161 7.04893 7.625 6.41304 7.625 5.75C7.625 5.08696 7.36161 4.45107 6.89277 3.98223C6.42393 3.51339 5.78804 3.25 5.125 3.25ZM5.875 18.2475C5.53654 18.2644 5.19817 18.2124 4.88045 18.0945C4.56272 17.9767 4.27228 17.7954 4.02677 17.5618C3.78125 17.3282 3.58579 17.0472 3.45226 16.7357C3.31873 16.4242 3.24992 16.0889 3.25 15.75V11.0625C3.25 10.9796 3.28292 10.9001 3.34153 10.8415C3.40013 10.7829 3.47962 10.75 3.5625 10.75H5.7675C5.8175 10.2913 5.98 9.865 6.22375 9.5H3.5625C2.7 9.5 2 10.2 2 11.0625V15.75C1.99994 16.2851 2.11442 16.8141 2.33575 17.3013C2.55708 17.7886 2.88013 18.2228 3.28319 18.5748C3.68626 18.9269 4.16 19.1885 4.67258 19.3423C5.18517 19.4961 5.72473 19.5383 6.255 19.4662C6.08676 19.0741 5.95942 18.6657 5.875 18.2475ZM17.745 19.4662C18.2753 19.5383 18.8148 19.4961 19.3274 19.3423C19.84 19.1885 20.3137 18.9269 20.7168 18.5748C21.1199 18.2228 21.4429 17.7886 21.6642 17.3013C21.8856 16.8141 22.0001 16.2851 22 15.75V11.0625C22 10.2 21.3 9.5 20.4375 9.5H17.7763C18.0212 9.865 18.1825 10.2913 18.2325 10.75H20.4375C20.5204 10.75 20.5999 10.7829 20.6585 10.8415C20.7171 10.9001 20.75 10.9796 20.75 11.0625V15.75C20.7501 16.0889 20.6813 16.4242 20.5477 16.7357C20.4142 17.0472 20.2187 17.3282 19.9732 17.5618C19.7277 17.7954 19.4373 17.9767 19.1196 18.0945C18.8018 18.2124 18.4635 18.2644 18.125 18.2475C18.0406 18.6657 17.9132 19.0741 17.745 19.4662ZM8.5625 9.5C7.7 9.5 7 10.2 7 11.0625V17C7 18.3261 7.52678 19.5979 8.46447 20.5355C9.40215 21.4732 10.6739 22 12 22C13.3261 22 14.5979 21.4732 15.5355 20.5355C16.4732 19.5979 17 18.3261 17 17V11.0625C17 10.2 16.3 9.5 15.4375 9.5H8.5625ZM8.25 11.0625C8.25 10.9796 8.28292 10.9001 8.34153 10.8415C8.40013 10.7829 8.47962 10.75 8.5625 10.75H15.4375C15.5204 10.75 15.5999 10.7829 15.6585 10.8415C15.7171 10.9001 15.75 10.9796 15.75 11.0625V17C15.75 17.9946 15.3549 18.9484 14.6517 19.6517C13.9484 20.3549 12.9946 20.75 12 20.75C11.0054 20.75 10.0516 20.3549 9.34835 19.6517C8.64509 18.9484 8.25 17.9946 8.25 17V11.0625Z" fill="#576582"/>
+                                <path d="M12 3.25C11.5027 3.25 11.0258 3.44754 10.6742 3.79917C10.3225 4.15081 10.125 4.62772 10.125 5.125C10.125 5.62228 10.3225 6.09919 10.6742 6.45083C11.0258 6.80246 11.5027 7 12 7C12.4973 7 12.9742 6.80246 13.3258 6.45083C13.6775 6.09919 13.875 5.62228 13.875 5.125C13.875 4.62772 13.6775 4.15081 13.3258 3.79917C12.9742 3.44754 12.4973 3.25 12 3.25ZM8.875 5.125C8.875 4.2962 9.20424 3.50134 9.79029 2.91529C10.3763 2.32924 11.1712 2 12 2C12.8288 2 13.6237 2.32924 14.2097 2.91529C14.7958 3.50134 15.125 4.2962 15.125 5.125C15.125 5.9538 14.7958 6.74866 14.2097 7.33471C13.6237 7.92076 12.8288 8.25 12 8.25C11.1712 8.25 10.3763 7.92076 9.79029 7.33471C9.20424 6.74866 8.875 5.9538 8.875 5.125ZM18.875 4.5C18.5435 4.5 18.2255 4.6317 17.9911 4.86612C17.7567 5.10054 17.625 5.41848 17.625 5.75C17.625 6.08152 17.7567 6.39946 17.9911 6.63388C18.2255 6.8683 18.5435 7 18.875 7C19.2065 7 19.5245 6.8683 19.7589 6.63388C19.9933 6.39946 20.125 6.08152 20.125 5.75C20.125 5.41848 19.9933 5.10054 19.7589 4.86612C19.5245 4.6317 19.2065 4.5 18.875 4.5ZM16.375 5.75C16.375 5.08696 16.6384 4.45107 17.1072 3.98223C17.5761 3.51339 18.212 3.25 18.875 3.25C19.538 3.25 20.1739 3.51339 20.6428 3.98223C21.1116 4.45107 21.375 5.08696 21.375 5.75C21.375 6.41304 21.1116 7.04893 20.6428 7.51777C20.1739 7.98661 19.538 8.25 18.875 8.25C18.212 8.25 17.5761 7.98661 17.1072 7.51777C16.6384 7.04893 16.375 6.41304 16.375 5.75ZM3.875 5.75C3.875 5.41848 4.0067 5.10054 4.24112 4.86612C4.47554 4.6317 4.79348 4.5 5.125 4.5C5.45652 4.5 5.77446 4.6317 6.00888 4.86612C6.2433 5.10054 6.375 5.41848 6.375 5.75C6.375 6.08152 6.2433 6.39946 6.00888 6.63388C5.77446 6.8683 5.45652 7 5.125 7C4.79348 7 4.47554 6.8683 4.24112 6.63388C4.0067 6.39946 3.875 6.08152 3.875 5.75ZM5.125 3.25C4.46196 3.25 3.82607 3.51339 3.35723 3.98223C2.88839 4.45107 2.625 5.08696 2.625 5.75C2.625 6.41304 2.88839 7.04893 3.35723 7.51777C3.82607 7.98661 4.46196 8.25 5.125 8.25C5.78804 8.25 6.42393 7.98661 6.89277 7.51777C7.36161 7.04893 7.625 6.41304 7.625 5.75C7.625 5.08696 7.36161 4.45107 6.89277 3.98223C6.42393 3.51339 5.78804 3.25 5.125 3.25ZM5.875 18.2475C5.53654 18.2644 5.19817 18.2124 4.88045 18.0945C4.56272 17.9767 4.27228 17.7954 4.02677 17.5618C3.78125 17.3282 3.58579 17.0472 3.45226 16.7357C3.31873 16.4242 3.24992 16.0889 3.25 15.75V11.0625C3.25 10.9796 3.28292 10.9001 3.34153 10.8415C3.40013 10.7829 3.47962 10.75 3.5625 10.75H5.7675C5.8175 10.2913 5.98 9.865 6.22375 9.5H3.5625C2.7 9.5 2 10.2 2 11.0625V15.75C1.99994 16.2851 2.11442 16.8141 2.33575 17.3013C2.55708 17.7886 2.88013 18.2228 3.28319 18.5748C3.68626 18.9269 4.16 19.1885 4.67258 19.3423C5.18517 19.4961 5.72473 19.5383 6.255 19.4662C6.08676 19.0741 5.95942 18.6657 5.875 18.2475ZM17.745 19.4662C18.2753 19.5383 18.8148 19.4961 19.3274 19.3423C19.84 19.1885 20.3137 18.9269 20.7168 18.5748C21.1199 18.2228 21.4429 17.7886 21.6642 17.3013C21.8856 16.8141 22.0001 16.2851 22 15.75V11.0625C22 10.2 21.3 9.5 20.4375 9.5H17.7763C18.0212 9.865 18.1825 10.2913 18.2325 10.75H20.4375C20.5204 10.75 20.5999 10.7829 20.6585 10.8415C20.7171 10.9001 20.75 10.9796 20.75 11.0625V15.75C20.7501 16.0889 20.6813 16.4242 20.5477 16.7357C20.4142 17.0472 20.2187 17.3282 19.9732 17.5618C19.7277 17.7954 19.4373 17.9767 19.1196 18.0945C18.8018 18.2124 18.4635 18.2644 18.125 18.2475C18.0406 18.6657 17.9132 19.0741 17.745 19.4662ZM8.5625 9.5C7.7 9.5 7 10.2 7 11.0625V17C7 18.3261 7.52678 19.5979 8.46447 20.5355C9.40215 21.4732 10.6739 22 12 22C13.3261 22 14.5979 21.4732 15.5355 20.5355C16.4732 19.5979 17 18.3261 17 17V11.0625C17 10.2 16.3 9.5 15.4375 9.5H8.5625ZM8.25 11.0625C8.25 10.9796 8.28292 10.9001 8.34153 10.8415C8.40013 10.7829 8.47962 10.75 8.5625 10.75H15.4375C15.5204 10.75 15.5999 10.7829 15.6585 10.8415C15.7171 10.9001 15.75 10.9796 15.75 11.0625V17C15.75 17.9946 15.3549 18.9484 14.6517 19.6517C13.9484 20.3549 12.9946 20.75 12 20.75C11.0054 20.75 10.0516 20.3549 9.34835 19.6517C8.64509 18.9484 8.25 17.9946 8.25 17V11.0625Z" stroke="#576582" stroke-width="0.3125" mask="url(#path-1-outside-1_4169_3414)"/>
+                            </svg>
+                            <span class="menu-item-text"><?php esc_html_e( 'Customers', 'bookingpress-appointment-booking' ); ?></span>
+                        </a>
+                    </li>
+                    <?php }
+                    if ( $BookingPressPro->bookingpress_check_capability( 'bookingpress_commission' ) ) {
+                    ?>
+                    <li>
+                        <a href="<?php echo add_query_arg( 'page', $bookingpress_slugs->bookingpress_commission, esc_url( admin_url() . 'admin.php?page=bookingpress' ) ); // phpcs:ignore ?>" class="<?php echo ( 'commission' == $request_module ) ? '__bpa-is-active' : ''; ?>">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M14.665 3.04046C13.147 1.68411 10.8526 1.68411 9.3346 3.04046L9.09292 3.25641C8.75513 3.55824 8.32487 3.73646 7.87259 3.76189L7.54899 3.78008C5.51656 3.89435 3.8941 5.5168 3.77983 7.54924L3.76164 7.87283C3.73621 8.32512 3.558 8.75537 3.25616 9.09316L3.04021 9.33485C1.68386 10.8528 1.68386 13.1473 3.04021 14.6652L3.25616 14.9069C3.558 15.2447 3.73621 15.675 3.76164 16.1273L3.77983 16.4508C3.8941 18.4833 5.51656 20.1057 7.54899 20.22L7.87259 20.2382C8.32487 20.2636 8.75513 20.4418 9.09292 20.7437L9.3346 20.9596C10.8526 22.316 13.147 22.316 14.665 20.9596L14.9067 20.7437C15.2445 20.4418 15.6747 20.2636 16.127 20.2382L16.4506 20.22C18.483 20.1057 20.1055 18.4833 20.2198 16.4509L20.238 16.1273C20.2634 15.675 20.4416 15.2447 20.7434 14.9069L20.9594 14.6652C22.3157 13.1473 22.3157 10.8528 20.9594 9.33484L20.7434 9.09316C20.4416 8.75537 20.2634 8.32512 20.238 7.87283L20.2198 7.54924C20.1055 5.5168 18.483 3.89435 16.4506 3.78008L16.127 3.76189C15.6747 3.73646 15.2445 3.55824 14.9067 3.25641L14.665 3.04046ZM15.7071 8.29289C16.0976 8.68342 16.0976 9.31658 15.7071 9.70711L9.70711 15.7071C9.31658 16.0976 8.68342 16.0976 8.29289 15.7071C7.90237 15.3166 7.90237 14.6834 8.29289 14.2929L14.2929 8.29289C14.6834 7.90237 15.3166 7.90237 15.7071 8.29289ZM16 14.5C16 15.3284 15.3284 16 14.5 16C13.6716 16 13 15.3284 13 14.5C13 13.6716 13.6716 13 14.5 13C15.3284 13 16 13.6716 16 14.5ZM9.5 11C10.3284 11 11 10.3284 11 9.5C11 8.67157 10.3284 8 9.5 8C8.67157 8 8 8.67157 8 9.5C8 10.3284 8.67157 11 9.5 11Z" fill="white" stroke="#576582"/>
+                        </svg>			
+                            <span class="menu-item-text"><?php esc_html_e( 'Commission', 'bookingpress-appointment-booking' ); ?></span>
+                        </a>
+                    </li>
+                    <?php }
+                    if ( $BookingPressPro->bookingpress_check_capability( 'bookingpress_payments' ) ) {
+                    ?>
+                    <li>
+                        <a href="<?php echo add_query_arg( 'page', $bookingpress_slugs->bookingpress_payments, esc_url( admin_url() . 'admin.php?page=bookingpress' ) ); // phpcs:ignore ?>" class="<?php echo ( 'payments' == $request_module ) ? '__bpa-is-active' : ''; ?>">
+                            
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M6.72266 10.9451C6.72266 10.3852 6.94508 9.84823 7.34099 9.45231C7.7369 9.0564 8.27387 8.83398 8.83377 8.83398H19.3893C19.9492 8.83398 20.4862 9.0564 20.8821 9.45231C21.278 9.84823 21.5004 10.3852 21.5004 10.9451V17.2784C21.5004 17.8383 21.278 18.3753 20.8821 18.7712C20.4862 19.1671 19.9492 19.3895 19.3893 19.3895H8.83377C8.27387 19.3895 7.7369 19.1671 7.34099 18.7712C6.94508 18.3753 6.72266 17.8383 6.72266 17.2784V10.9451Z" stroke="#576582" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M12 14.1111C12 14.671 12.2224 15.208 12.6183 15.6039C13.0142 15.9998 13.5512 16.2222 14.1111 16.2222C14.671 16.2222 15.208 15.9998 15.6039 15.6039C15.9998 15.208 16.2222 14.671 16.2222 14.1111C16.2222 13.5512 15.9998 13.0142 15.6039 12.6183C15.208 12.2224 14.671 12 14.1111 12C13.5512 12 13.0142 12.2224 12.6183 12.6183C12.2224 13.0142 12 13.5512 12 14.1111Z" stroke="#576582" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M17.2778 8.83355V6.72244C17.2778 6.16254 17.0554 5.62557 16.6594 5.22966C16.2635 4.83375 15.7266 4.61133 15.1667 4.61133H4.61111C4.05121 4.61133 3.51424 4.83375 3.11833 5.22966C2.72242 5.62557 2.5 6.16254 2.5 6.72244V13.0558C2.5 13.6157 2.72242 14.1526 3.11833 14.5486C3.51424 14.9445 4.05121 15.1669 4.61111 15.1669H6.72222" stroke="#576582" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span class="menu-item-text"><?php esc_html_e( 'Payments', 'bookingpress-appointment-booking' ); ?></span>
+                        </a>
+                    </li>
+                    <?php }
+                    if ( $BookingPressPro->bookingpress_check_capability( 'bookingpress_timesheet' ) && !$BookingPressPro->bookingpress_check_capability( 'add_staffmembers_details' ) ) {
+                    ?>
+                    <li>
+                        <a href="<?php echo add_query_arg( 'page', $bookingpress_slugs->bookingpress_timesheet, esc_url( admin_url() . 'admin.php?page=bookingpress' ) ); // phpcs:ignore ?>" class="<?php echo ( 'timesheet' == $request_module ) ? '__bpa-is-active' : ''; ?>">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <g clip-path="url(#clip0_4458_14017)">
+                                    <path d="M17 12C14.24 12 12 14.24 12 17C12 19.76 14.24 22 17 22C19.76 22 22 19.76 22 17C22 14.24 19.76 12 17 12ZM18.65 19.35L16.5 17.2V14H17.5V16.79L19.35 18.64L18.65 19.35ZM18 3H14.82C14.4 1.84 13.3 1 12 1C10.7 1 9.6 1.84 9.18 3H6C4.9 3 4 3.9 4 5V20C4 21.1 4.9 22 6 22H12.11C11.52 21.43 11.04 20.75 10.69 20H6V5H8V8H16V5H18V10.08C18.71 10.18 19.38 10.39 20 10.68V5C20 3.9 19.1 3 18 3ZM12 5C11.45 5 11 4.55 11 4C11 3.45 11.45 3 12 3C12.55 3 13 3.45 13 4C13 4.55 12.55 5 12 5Z" fill="#727E95"/>
+                                </g>
+                                <defs>
+                                    <clipPath id="clip0_4458_14017">
+                                        <rect width="24" height="24" fill="white"/>
+                                    </clipPath>
+                                </defs>
+                            </svg>
+                            <span class="menu-item-text"><?php esc_html_e( 'TimeSheet', 'bookingpress-appointment-booking' ); ?></span>
+                        </a>
+                    </li>
+                    <?php }
+                    if ( $BookingPressPro->bookingpress_check_user_role( 'bookingpress-staffmember' ) && $BookingPressPro->bookingpress_check_capability( 'bookingpress_myprofile' ) && empty($bookingpress_custom_roles)) {
+                    ?>
+                    <li>
+                        <a href="<?php echo add_query_arg( 'page', $bookingpress_slugs->bookingpress_myprofile, esc_url( admin_url() . 'admin.php?page=bookingpress' ) ); // phpcs:ignore ?>" class="<?php echo ( 'myprofile' == $request_module ) ? '__bpa-is-active' : ''; ?>">
+                            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <g clip-path="url(#clip0_4733_13775)">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 5C13.66 5 15 6.34 15 8C15 9.66 13.66 11 12 11C10.34 11 9 9.66 9 8C9 6.34 10.34 5 12 5ZM12 19.2C9.5 19.2 7.29 17.92 6 15.98C6.03 13.99 10 12.9 12 12.9C13.99 12.9 17.97 13.99 18 15.98C16.71 17.92 14.5 19.2 12 19.2Z" fill="#727E95"/>
+                                </g>
+                                <defs>
+                                    <clipPath id="clip0_4733_13775">
+                                        <rect width="24" height="24" fill="white"/>
+                                    </clipPath>
+                                </defs>
+                            </svg>
+                            <span class="menu-item-text"><?php esc_html_e( 'My Profile', 'bookingpress-appointment-booking' ); ?></span>
+                        </a>
+                    </li>
+                    <?php }
+                        
+                    if ( $BookingPressPro->bookingpress_check_user_role( 'bookingpress-staffmember' ) && $BookingPressPro->bookingpress_check_capability( 'bookingpress_myservices' ) ) {
+                    ?>
+                    <li>
+                        <a href="<?php echo add_query_arg( 'page', $bookingpress_slugs->bookingpress_myservices, esc_url( admin_url() . 'admin.php?page=bookingpress' ) ); // phpcs:ignore ?>" class="<?php echo ( 'myservices' == $request_module ) ? '__bpa-is-active' : ''; ?>"> 
+                            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M7.5 3V4.5H5.25C5.05109 4.5 4.86032 4.57902 4.71967 4.71967C4.57902 4.86032 4.5 5.05109 4.5 5.25V21.75C4.5 21.9489 4.57902 22.1397 4.71967 22.2803C4.86032 22.421 5.05109 22.5 5.25 22.5H18.75C18.9489 22.5 19.1397 22.421 19.2803 22.2803C19.421 22.1397 19.5 21.9489 19.5 21.75V5.25C19.5 5.05109 19.421 4.86032 19.2803 4.71967C19.1397 4.57902 18.9489 4.5 18.75 4.5H16.5V3H7.5ZM6 6H7.5V7.5H16.5V6H18V21H6V6ZM8.25 9C8.05109 9 7.86032 9.07902 7.71967 9.21967C7.57902 9.36032 7.5 9.55109 7.5 9.75C7.5 9.94891 7.57902 10.1397 7.71967 10.2803C7.86032 10.421 8.05109 10.5 8.25 10.5C8.44891 10.5 8.63968 10.421 8.78033 10.2803C8.92098 10.1397 9 9.94891 9 9.75C9 9.55109 8.92098 9.36032 8.78033 9.21967C8.63968 9.07902 8.44891 9 8.25 9ZM10.5 9V10.5H16.5V9H10.5ZM8.25 12C8.05109 12 7.86032 12.079 7.71967 12.2197C7.57902 12.3603 7.5 12.5511 7.5 12.75C7.5 12.9489 7.57902 13.1397 7.71967 13.2803C7.86032 13.421 8.05109 13.5 8.25 13.5C8.44891 13.5 8.63968 13.421 8.78033 13.2803C8.92098 13.1397 9 12.9489 9 12.75C9 12.5511 8.92098 12.3603 8.78033 12.2197C8.63968 12.079 8.44891 12 8.25 12ZM10.5 12V13.5H16.5V12H10.5ZM8.25 15C8.05109 15 7.86032 15.079 7.71967 15.2197C7.57902 15.3603 7.5 15.5511 7.5 15.75C7.5 15.9489 7.57902 16.1397 7.71967 16.2803C7.86032 16.421 8.05109 16.5 8.25 16.5C8.44891 16.5 8.63968 16.421 8.78033 16.2803C8.92098 16.1397 9 15.9489 9 15.75C9 15.5511 8.92098 15.3603 8.78033 15.2197C8.63968 15.079 8.44891 15 8.25 15ZM10.5 15V16.5H16.5V15H10.5ZM8.25 18C8.05109 18 7.86032 18.079 7.71967 18.2197C7.57902 18.3603 7.5 18.5511 7.5 18.75C7.5 18.9489 7.57902 19.1397 7.71967 19.2803C7.86032 19.421 8.05109 19.5 8.25 19.5C8.44891 19.5 8.63968 19.421 8.78033 19.2803C8.92098 19.1397 9 18.9489 9 18.75C9 18.5511 8.92098 18.3603 8.78033 18.2197C8.63968 18.079 8.44891 18 8.25 18ZM10.5 18V19.5H16.5V18H10.5Z" fill="#727E95" />
+                            </svg>
+                            <span class="menu-item-text"><?php esc_html_e( 'My Services', 'bookingpress-appointment-booking' ); ?></span>
+                        </a>
+                    </li>
+                    <?php } ?>	
+
+                    <?php 
+                        //do_action("bookingpress_add_menu_at_staffmember_customize_view", $BookingPressPro, $request_module);
+                        do_action("bookingpress_add_menu_at_staffmember_customize_calendar_view", $BookingPressPro, $request_module);
+                    ?>
+                    
+
+                    <li>
+                        <a href="<?php echo add_query_arg( 'bookingpress_action', 'bookingpress_logout', esc_url( admin_url() . 'admin.php?page=bookingpress' ) ); // phpcs:ignore ?>">
+                            
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M14.9355 7.79524C14.6419 4.38479 12.8893 2.99219 9.0525 2.99219H8.92935C4.6947 2.99219 2.99895 4.68794 2.99895 8.92259V15.0993C2.99895 19.3339 4.6947 21.0297 8.92935 21.0297H9.0525C12.8608 21.0297 14.6134 19.656 14.9261 16.3024" stroke="#576582" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M9.15867 12H19.9395" stroke="#576582" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M17.8264 8.82812L21 12.0018L17.8264 15.1754" stroke="#576582" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span class="menu-item-text"><?php esc_html_e( 'Logout', 'bookingpress-appointment-booking' ); ?></span>
+                        </a>
+                    </li>
+                    <?php if($BookingPressPro->bookingpress_check_user_role( 'bookingpress-staffmember' ) && !empty($bookingpress_staffmember_access_admin) && $bookingpress_staffmember_access_admin == 'true') { ?>
+                    <li class="bpa-ssn-nav__swtich-wp-btn">
+                        <bp-ui-button class="bpa-btn bpa-btn--full-width" @click="bpa_staffmember_open_admin_view">
+                            <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M2.59288 9.9999C2.59239 12.8384 4.21392 15.4275 6.7678 16.6663L3.23415 6.98541C2.81055 7.93387 2.59207 8.96111 2.59288 9.9999ZM10.1304 10.6478L7.90755 17.1058C9.3999 17.5452 10.9927 17.5039 12.4602 16.9876C12.4396 16.9552 12.4218 16.9211 12.4071 16.8855L10.1304 10.6478ZM15.0009 9.62636C14.9909 8.90192 14.7795 8.19456 14.3902 7.58355C13.9921 7.08263 13.7402 6.48134 13.6625 5.84619C13.6446 5.1403 14.2006 4.55263 14.9065 4.53158C14.9393 4.53158 14.9705 4.53554 15.0024 4.53754C11.9864 1.77485 7.30187 1.98025 4.53922 4.99621C4.27191 5.28798 4.02848 5.6007 3.8112 5.93137C3.98503 5.9369 4.14887 5.94038 4.28787 5.94038C5.0625 5.94038 6.26216 5.84614 6.26216 5.84614C6.43099 5.83638 6.57579 5.96534 6.58556 6.13417C6.59505 6.29834 6.47314 6.44071 6.30946 6.4566C6.30946 6.4566 5.90799 6.50359 5.46181 6.52696L8.15907 14.5505L9.78038 9.68891L8.6263 6.52702C8.22721 6.50363 7.84939 6.45665 7.84939 6.45665C7.6811 6.44038 7.55784 6.29074 7.57406 6.12245C7.5899 5.95865 7.73232 5.8367 7.89654 5.84619C7.89654 5.84619 9.11952 5.94043 9.84728 5.94043C10.6219 5.94043 11.8218 5.84619 11.8218 5.84619C11.9906 5.83632 12.1355 5.96517 12.1453 6.13395C12.1549 6.29834 12.0329 6.44092 11.869 6.45665C11.869 6.45665 11.4672 6.50364 11.0213 6.52702L13.6982 14.4895L14.4623 12.0681C14.7607 11.2851 14.9422 10.4623 15.0009 9.62636ZM16.5502 7.20801C16.5374 8.12066 16.346 9.02203 15.9868 9.86112L13.7244 16.4024C17.1943 14.3839 18.4252 9.96908 16.5004 6.4464C16.5341 6.69884 16.5507 6.95329 16.5502 7.20801ZM10.0002 1.11133C5.09104 1.11133 1.11133 5.09104 1.11133 10.0002C1.11133 14.9094 5.09104 18.8891 10.0002 18.8891C14.9094 18.8891 18.8891 14.9094 18.8891 10.0002C18.8891 5.09104 14.9094 1.11133 10.0002 1.11133ZM13.2524 17.6993C10.6511 18.8002 7.66944 18.5104 5.32888 16.9291C3.98536 16.022 2.93365 14.7449 2.301 13.2524C1.19987 10.6511 1.4898 7.66933 3.0714 5.32888C3.9783 3.98524 5.25543 2.93343 6.74805 2.30105C9.34934 1.2002 12.331 1.49002 14.6716 3.07129C16.0151 3.97836 17.0668 5.25548 17.6994 6.74799C18.8006 9.34928 18.5106 12.3311 16.929 14.6715C16.0221 16.0151 14.745 17.067 13.2524 17.6993Z" />
+                            </svg>
+                            <span class="menu-item-text"><?php esc_html_e( 'Swtich to WordPress', 'bookingpress-appointment-booking' ); ?></span>
+                        </bp-ui-button>
+                    </li>
+                    <?php } ?>
+                </ul>
+            </div>
+        </div>
+        <div class="bpa-staff-header-navbar__mob">
+            <div class="bpa-shn-mob__wrap">
+                <div class="bpa-shn-wrap__left">
+                    <a href="#">
+                        <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="64" height="64" rx="12"/>
+                            <path d="M50 18.9608V47.2745C50 49.3359 48.325 51 46.25 51H17.75C15.675 51 14 49.3359 14 47.2745V18.9608C14 16.8993 15.675 15.2353 17.75 15.2353H23V14.1176C23 13.7451 23.375 13 24.125 13C24.875 13 25.25 13.7451 25.25 14.1176V18.5882C25.25 18.9608 24.875 19.7059 24.125 19.7059C23.375 19.7059 23 18.9608 23 18.5882V17.4706H18.5C17.25 17.4706 16.25 18.4641 16.25 19.7059V46.5294C16.25 47.7712 17.25 48.7647 18.5 48.7647H45.5C46.75 48.7647 47.75 47.7712 47.75 46.5294V19.7059C47.75 18.4641 46.75 17.4706 45.5 17.4706H41C41 17.4706 41 18.0418 41 18.5882C41 18.9608 40.625 19.7059 39.875 19.7059C39.125 19.7059 38.75 18.9608 38.75 18.5882V17.4706H33.125C32.5 17.4706 32 16.9739 32 16.3529C32 15.732 32.5 15.2353 33.125 15.2353H38.75V14.1176C38.75 13.7451 39.125 13 39.875 13C40.625 13 41 13.7451 41 14.1176V15.2353H46.25C48.325 15.2353 50 16.8993 50 18.9608Z" fill="white"/>
+                            <path d="M37.2501 30.8823C37.2501 30.8823 38.0001 30.1372 38.0001 27.9019C38.0001 24.1765 35.7501 23.4314 32.7501 23.4314H26.0001V39.0784H30.5001V43.549H32.7501V39.0784C35.3501 39.0784 37.1751 39.0784 38.5251 37.4144C39.1751 36.6196 39.5001 35.6013 39.5001 34.5582C39.5001 34.0118 39.4251 33.4654 39.3001 33.1176C38.9751 32.2732 38.7501 31.6274 37.2501 30.8823ZM35.0001 36.8431C34.2501 36.8431 32.7501 36.8431 32.7501 36.8431C32.7501 36.8431 32.7501 36.098 32.7501 34.6078C32.7501 33.366 33.7501 32.3725 35.0001 32.3725C36.2001 32.3725 37.2501 33.3412 37.2501 34.6078C37.2501 35.9242 36.1501 36.8431 35.0001 36.8431ZM33.1751 30.6836C32.8001 30.8575 32.4251 31.081 32.0751 31.3294C31.2501 31.9503 30.5001 32.8444 30.5001 34.6078V36.8431H28.2501V25.6667H32.7501C34.5501 25.6667 35.7501 26.4118 35.7501 27.9019C35.7501 29.268 34.7251 29.9137 33.1751 30.6836Z" fill="white"/>
+                        </svg>
+                    </a>
+                </div>
+                <div class="bpa-shn-wrap__right">
+                    <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M14.9102 8.82422C14.9102 5.01172 12.8594 3.71484 10.9414 3.42578C10.9414 3.40625 10.9453 3.38672 10.9453 3.36328C10.9453 2.88281 10.5195 2.5 10 2.5C9.48047 2.5 9.07031 2.88281 9.07031 3.36328C9.07031 3.38672 9.07031 3.40625 9.07422 3.42578C7.15234 3.71875 5.08984 5.01953 5.08984 8.83203C5.08984 13.2773 3.98438 13.7539 2.5 15.0039H17.5C16.0234 13.75 14.9102 13.2695 14.9102 8.82422Z" fill="#727E95"/>
+                        <path d="M10.0078 17.5C11.0547 17.5 11.9141 16.7227 12.0273 15.8203H7.98828C8.09766 16.7227 8.96094 17.5 10.0078 17.5Z" fill="#727E95"/>
+                    </svg>
+                    <?php  			
+                        do_action('bookingpress_staffpanel_top_bar',$bookingpress_staffmember_id,'mobile');			
+                    ?>	
+                    <div></div>		
+                    <div class="bpa-shn-mob-hamburger bpa-staff-shn-mob-hamburger" @click="bpa_staffmemeber_toogle_menu" :class="(bpa_toggle_active == 1) ? '__bpa-is-active' : ''">
+                        <div class="bpa-menu-toggle" id="bpa-mobile-menu">
+                            <span class="bpa-mm-bar"></span>
+                            <span class="bpa-mm-bar"></span>
+                            <span class="bpa-mm-bar"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php
+}?>

@@ -1,0 +1,29 @@
+.bpa-staff-sidebar-navigation.bpa-staff-sidebar-navigation-folded{
+    width: 75px;   
+}
+
+.bpa-staff-sidebar-navigation.bpa-staff-sidebar-navigation-folded .bpa-ssn-logo-full{
+    display:none;
+}
+
+.bpa-staff-sidebar-navigation.bpa-staff-sidebar-navigation-folded .bpa-ssn-log-folded{
+    display:block;
+}
+
+.bpa-staff-sidebar-navigation.bpa-staff-sidebar-navigation-folded .menu-item-text{
+    display:none;
+}
+
+#wpbody-content:has( .bpa-staff-sidebar-navigation-folded ){
+    margin-left: 75px;
+}
+
+#wpbody-content:has( .bpa-staff-sidebar-navigation-folded ) #bookingpress-calendar{
+    width: calc( 100% - 75px )
+}
+
+@media all and ( max-width: 768px ){
+    #bpa-staff-panel-mob-header.calendar{
+        display: none !important;
+    }
+}

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "bookingpress-appointment-booking-pro/bookingform-popup",
+  "title": "BookingPress - Appointments Booking Calendar Plugin and Online Scheduling Plugin",
+  "category": "bookingpress",
+  "keywords": [ "appointment", "bookingpress" , "booking calendar", "scheduling", "booking system", "reservation", "popup"],
+  "version": "5.7.3",
+  "textdomain": "bookingpress-appointment-booking",      
+  "editorScript": "file:./index.js"
+}
