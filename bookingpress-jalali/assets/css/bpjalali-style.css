@@ -1,0 +1,123 @@
+/**
+ * BookingPress Jalali — Styles
+ *
+ * Minimal, non-intrusive styling that matches BookingPress's existing
+ * typography, spacing, colors, and control patterns.
+ */
+
+/* ── Toggle Button ──────────────────────────────────────── */
+
+.bpjalali-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    margin-bottom: 12px;
+    border: 1px solid #dcdfe6;
+    border-radius: 4px;
+    background-color: #fff;
+    color: #606266;
+    font-size: 13px;
+    font-family: inherit;
+    line-height: 1.4;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    outline: none;
+}
+
+.bpjalali-toggle-btn:hover {
+    border-color: #409eff;
+    color: #409eff;
+}
+
+.bpjalali-toggle-btn:focus {
+    border-color: #409eff;
+    box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
+}
+
+.bpjalali-toggle-btn:active {
+    border-color: #3a8ee6;
+    color: #3a8ee6;
+}
+
+/* Icon */
+.bpjalali-toggle-icon {
+    font-size: 14px;
+    line-height: 1;
+}
+
+/* Active label (current mode) */
+.bpjalali-toggle-active {
+    font-weight: 600;
+    color: #303133;
+}
+
+/* Inactive label (alternative mode) */
+.bpjalali-toggle-inactive {
+    font-weight: 400;
+    color: #909399;
+}
+
+/* Separator arrow */
+.bpjalali-toggle-sep {
+    font-size: 12px;
+    color: #c0c4cc;
+    margin: 0 2px;
+}
+
+/* ── Responsive Adjustments ─────────────────────────────── */
+
+@media (max-width: 576px) {
+    .bpjalali-toggle-btn {
+        font-size: 12px;
+        padding: 5px 10px;
+        gap: 4px;
+    }
+
+    .bpjalali-toggle-icon {
+        font-size: 13px;
+    }
+}
+
+/* ── Integration with BookingPress Themes ───────────────── */
+
+/* When inside BookingPress booking form */
+.bpa-frontend-main-booking-calendar .bpjalali-toggle-btn,
+[id^="bookingpress_booking_form_"] .bpjalali-toggle-btn {
+    margin-left: 0;
+    margin-right: auto;
+}
+
+/* When inside BookingPress admin calendar */
+.bpa-main-calendar-section .bpjalali-toggle-btn {
+    margin-bottom: 16px;
+}
+
+/* ── Dark/Custom Theme Support ──────────────────────────── */
+
+/* Respect BookingPress custom colors if set via CSS vars */
+.bpjalali-toggle-btn {
+    --bpjalali-border: #dcdfe6;
+    --bpjalali-hover: #409eff;
+    --bpjalali-active-text: #303133;
+    --bpjalali-inactive-text: #909399;
+
+    border-color: var(--bpjalali-border);
+}
+
+.bpjalali-toggle-btn:hover {
+    border-color: var(--bpjalali-hover);
+    color: var(--bpjalali-hover);
+}
+
+.bpjalali-toggle-active {
+    color: var(--bpjalali-active-text);
+}
+
+.bpjalali-toggle-inactive {
+    color: var(--bpjalali-inactive-text);
+}
