@@ -1,0 +1,129 @@
+
+# ============================================================
+# BookingPress Jalali - DDEV WordPress Development
+# ============================================================
+
+# ------------------------------------------------------------
+# 1. WordPress Core
+# ------------------------------------------------------------
+/wp-admin/
+/wp-includes/
+/wp-*.php
+/index.php
+/xmlrpc.php
+/license.txt
+/readme.html
+/.htaccess
+/.user.ini
+
+# WordPress configuration
+/wp-config.php
+/wp-config-*.php
+
+
+# ------------------------------------------------------------
+# 2. WordPress Content
+# ------------------------------------------------------------
+# Ignore everything inside wp-content by default
+/wp-content/*
+
+# Allow the plugins directory
+!/wp-content/plugins/
+
+# Ignore all installed plugins
+/wp-content/plugins/*
+
+# Track ONLY our custom plugin
+!/wp-content/plugins/bookingpress-jalali/
+!/wp-content/plugins/bookingpress-appointment-booking
+!/wp-content/plugins/bookingpress-appointment-booking-pro
+# ------------------------------------------------------------
+# 3. DDEV
+# ------------------------------------------------------------
+# Keep .ddev/config.yaml and custom DDEV configuration.
+# Ignore local settings and generated files.
+
+/.ddev/config.local.yaml
+/.ddev/config.*.local.yaml
+/.ddev/.env.local
+/.ddev/.env.*.local
+
+# DDEV-generated files
+/.ddev/.gitignore
+/.ddev/.ddev-docker-compose-*.yaml
+/.ddev/.dbimageBuild/
+/.ddev/.webimageBuild/
+/.ddev/.homeadditions/
+
+# Database snapshots
+/.ddev/db_snapshots/
+
+
+# ------------------------------------------------------------
+# 4. Environment & Secrets
+# ------------------------------------------------------------
+/.env
+/.env.*
+!/.env.example
+
+# Plugin-local environment files
+/wp-content/plugins/bookingpress-jalali/.env
+/wp-content/plugins/bookingpress-jalali/.env.*
+
+
+# ------------------------------------------------------------
+# 5. Logs, Backups & Temporary Files
+# ------------------------------------------------------------
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+
+/*.sql
+/*.sql.gz
+/backups/
+
+
+# ------------------------------------------------------------
+# 6. Dependencies
+# ------------------------------------------------------------
+node_modules/
+
+
+# ------------------------------------------------------------
+# 7. Testing & Coverage
+# ------------------------------------------------------------
+playwright-report/
+test-results/
+coverage/
+.phpunit.result.cache
+.phpunit.cache/
+
+
+# ------------------------------------------------------------
+# 8. Operating System Files
+# ------------------------------------------------------------
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+
+# ------------------------------------------------------------
+# 9. VS Code
+# ------------------------------------------------------------
+# Ignore personal editor files, allow shared configurations.
+
+/.vscode/*
+!/.vscode/settings.json
+!/.vscode/extensions.json
+!/.vscode/tasks.json
+!/.vscode/launch.json
+
+
+# ------------------------------------------------------------
+# 10. Agent Configuration
+# ------------------------------------------------------------
+# AGENTS.md and .agent/ are intentionally tracked.
+# Do not ignore them.
